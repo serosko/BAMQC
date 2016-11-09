@@ -1,5 +1,4 @@
-#include <parse.h>
-//#include <BAMQC.h>
+#include <BAMQC.h>
 
 int main(int argc, char const ** argv)
 {
@@ -23,7 +22,7 @@ int main(int argc, char const ** argv)
 //                   << contigLengths(bamContext)[i] << '\n';
     TInsertDistr counts = "";
     resize(counts, 500, 0);
-    wrapCountInsertSize(counts, bamFile);
+    wrapCountInsertSize(counts, bamFile, options);
     wrapOutput(counts, options);
     return 0;
 }

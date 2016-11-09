@@ -1,40 +1,48 @@
 #include <iostream>
 #include <seqan/bam_io.h>
+#include <parse.h>
 
 //TODO: Do this for coordinate sorted BAM files.
 
 using namespace seqan;
 
-//String holding the number of inserts of each length. Index 1 holds the number
-//of inserts with length 1, index 2 holds the number of inserts with length 2...
-//index 0 holds the number of segments without a mapped partner or the i
-//information is not available
-typedef String<unsigned> TInsertDistr;
-
 //Get Distance from leftmost base of first mate to rightmost base of right mate 
 //(template length) from one record and add it to counter in TInsertDistr
-int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & record)
+int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & record, ProgramOptions & options)
 {
     int32_t insertSize = record.tLen;
-    if (insertSize >= 0)
+    if (insertSize >= 0 && insertSize <= options.maxInsert)
     {
-        if ((unsigned)insertSize > length(counts)) //Check for sufficient space
-            resize(counts, insertSize * 2, 0);
         ++counts[insertSize];                     //Increase counter
         return 0;
     }
-    else return 1;          //return 1 if record was right mate (not counted)
+    else return 1;          //return 1 if record was right mate or longer than maxInsert (not counted)
 }
-//wrapper for counting the insert sizes of the whole Bam-file
-int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile)
+
+//checks the flags and mapping quality of a record and returns false if any undesired flag is found, true otherwise.
+bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & options)
 {
+    if(hasFlagDuplicate(record) ||
+        hasFlagQCNoPass(record) ||
+        hasFlagSecondary(record)||
+        hasFlagSupplementary(record) ||
+        record.mapQ < options.minMapQ)
+        return false;
+    else return true;
+}
+
+//wrapper for counting the insert sizes of the whole Bam-file
+int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
+{
+    resize(counts, options.maxInsert + 1, 0);
     BamAlignmentRecord record;
     try
     {
         while (!atEnd(bamFile))
         {
             readRecord(record, bamFile);
-            countInsertSize(counts, record);
+            if (checkRecord(record, options))
+                countInsertSize(counts, record, options);
         }
     }
     catch (Exception const & e)

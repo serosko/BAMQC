@@ -1,13 +1,21 @@
 #include <seqan/arg_parse.h>
 #include <seqan/bam_io.h>
-#include <BAMQC.h>
+
 
 using namespace seqan;
+
+//String holding the number of inserts of each length. Index 1 holds the number
+//of inserts with length 1, index 2 holds the number of inserts with length 2...
+//index 0 holds the number of segments without a mapped partner or the i
+//information is not available
+typedef String<unsigned> TInsertDistr;
 
 struct ProgramOptions //Struct holding all program options.
 {
     CharString inPath;
     CharString outPath;
+    int maxInsert;
+    unsigned minMapQ;
 };
 //Parse the command line and/or display help message.
 ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
@@ -25,8 +33,21 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addArgument(parser, fileArg);
     
     addOption(parser, seqan::ArgParseOption(
-    "O", "output-file", "Path to the output file",
+    "O", "output-file", "Path to the output file.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
+    
+    addOption(parser, seqan::ArgParseOption(
+    "m", "max-insert", "Maximum insert size.",
+    seqan::ArgParseArgument::INTEGER, "INT"));
+    setDefaultValue(parser, "max-insert", "10000");
+    setMinValue(parser, "max-insert", "100");
+    
+        addOption(parser, seqan::ArgParseOption(
+    "mmq", "min-mapq", "Minimum mapping quality.",
+    seqan::ArgParseArgument::INTEGER, "INT"));
+    setDefaultValue(parser, "min-mapq", "25");
+    setMinValue(parser, "min-mapq", "0");
+    setMaxValue(parser, "min-mapq", "244");
     
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
@@ -36,6 +57,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     //Get path of input BAM.
     getArgumentValue(options.inPath, parser, 0);
     getOptionValue(options.outPath, parser, "output-file");
+    getOptionValue(options.maxInsert, parser, "max-insert");
+    getOptionValue(options.minMapQ, parser, "min-mapq");
     return ArgumentParser::PARSE_OK;
 }
 
