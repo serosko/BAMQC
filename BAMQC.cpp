@@ -7,6 +7,8 @@ int main(int argc, char const ** argv)
     seqan::ArgumentParser::ParseResult res = parseCommandLine(options,
                                                               argc,
                                                               argv);
+    if(inputCheck(options))     //Terminate of checkl of parameters fails.
+        return 1;
     //Check if input was correctly parsed
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
