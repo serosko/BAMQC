@@ -2,13 +2,11 @@
 #include <seqan/bam_io.h>
 #include <parse.h>
 
-//TODO: Do this for coordinate sorted BAM files.
-
 using namespace seqan;
 
 //Get Distance from leftmost base of first mate to rightmost base of right mate 
 //(template length) from one record and add it to counter in TInsertDistr
-int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & record, ProgramOptions & options)
+inline int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & record, ProgramOptions & options)
 {
     int32_t insertSize = record.tLen;
     if (insertSize >= 0 && insertSize <= options.maxInsert)
@@ -20,7 +18,7 @@ int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & record, Pr
 }
 
 //checks the flags and mapping quality of a record and returns false if any undesired flag is found, true otherwise.
-bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & options)
+inline bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & options)
 {
     if(hasFlagDuplicate(record) ||
         hasFlagQCNoPass(record) ||
@@ -32,7 +30,7 @@ bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & opti
 }
 
 //wrapper for counting the insert sizes of the whole Bam-file
-int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
+inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
 {
     resize(counts, options.maxInsert + 1, 0);
     BamAlignmentRecord record;

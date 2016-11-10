@@ -1,14 +1,20 @@
 #include <seqan/arg_parse.h>
 #include <seqan/bam_io.h>
-
+#include <seqan/seq_io.h>
 
 using namespace seqan;
 
+/////////////////////Typedefs////////////////////////
 //String holding the number of inserts of each length. Index 1 holds the number
 //of inserts with length 1, index 2 holds the number of inserts with length 2...
 //index 0 holds the number of segments without a mapped partner or the i
 //information is not available
 typedef String<unsigned> TInsertDistr;
+//FragmentStore, holding info on the refernce sequence
+typedef FragmentStore<> TStore;
+typedef Value<TStore::TContigStore>::Type TContig;
+typedef Value<TStore::TAlignedReadStore>::Type TAlignedRead;
+
 
 struct ProgramOptions //Struct holding all program options.
 {
@@ -19,7 +25,9 @@ struct ProgramOptions //Struct holding all program options.
     int maxInsert;
     unsigned minMapQ;
     bool catg = false;
+    unsigned minMapQCAGT;
 };
+/////////////////////Parsing functions////////////////////////
 //Parse the command line and/or display help message.
 ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
                                                     int argc,
@@ -33,7 +41,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     
     addSection(parser, "I/O Options");
     ArgParseArgument fileArg(ArgParseArgument::INPUT_FILE, "FILE", false);
-    setValidValues(fileArg, "bam");
+    setValidValues(fileArg, "bam sam");
     addArgument(parser, fileArg);
     
     addOption(parser, seqan::ArgParseOption(
@@ -68,6 +76,13 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
               "c", "cagt-artifact",
               "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013)). Requires reference genome."));
     
+    addOption(parser, seqan::ArgParseOption(
+    "mmqA", "min-mapq-artifacts", "Minimum mapping quality when checking for C>A/G>T artifacts.",
+    seqan::ArgParseArgument::INTEGER, "INT"));
+    setDefaultValue(parser, "min-mapq-artifacts", "25");
+    setMinValue(parser, "min-mapq-artifacts", "0");
+    setMaxValue(parser, "min-mapq-artifacts", "244");
+    
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
     //Terminate on error
@@ -77,14 +92,15 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     getArgumentValue(options.inPath, parser, 0);
     getOptionValue(options.refPath, parser, "reference");
     getOptionValue(options.outPath, parser, "output-file");
-    options.catg = isSet(parser, "insert-size-distribution");
+    options.insDist = isSet(parser, "insert-size-distribution");
     getOptionValue(options.maxInsert, parser, "max-insert");
     getOptionValue(options.minMapQ, parser, "min-mapq");
     options.catg = isSet(parser, "cagt-artifact");
+    getOptionValue(options.minMapQ, parser, "min-mapq-artifacts");
     return ArgumentParser::PARSE_OK;
 }
 //Check parameters for consistency. Return 1 on inconsistencies and 0 on pass.
-int inputCheck(const ProgramOptions & options)
+inline int inputCheck(const ProgramOptions & options)
 {
     if (!(options.insDist || options.catg))
     {
@@ -105,13 +121,32 @@ int inputCheck(const ProgramOptions & options)
     return 0; //all go
 }
 
+/////////////////////Input-file functions////////////////////////
 //Load BAM-file.
-int loadBAM(BamFileIn& bamFile, const CharString bamFileName)
+inline int loadBAM(BamFileIn & bamFile, const CharString & bamFileName)
 {
     if (!open(bamFile, toCString(bamFileName)))
     {
         std::cerr << "ERROR: Could not open " << bamFileName << std::endl;
         return 1;
+    }
+    return 0;
+}
+//Load index of reference genome. If not available, build it on the fly.
+inline int loadRefIdx(FaiIndex & faiIndex, const CharString & refFileName)
+{
+    if (!open(faiIndex, toCString(refFileName)))
+    {
+        if (!build(faiIndex, toCString(refFileName)))
+        {
+            std::cerr << "ERROR: Index could not be loaded or built.\n";
+            return 1;
+        }
+        if (!save(faiIndex))
+        {
+            std::cerr << "ERROR: Index could not be written do disk.\n";
+            return 1;
+        }
     }
     return 0;
 }
@@ -139,7 +174,7 @@ Pair<unsigned, unsigned> getFirstLast (const TInsertDistr & counts)
     return firstLast;
 }
 //Format output stats
-void formatStats(std::stringstream & out, const TInsertDistr & counts, const Pair<unsigned, unsigned> & firstLast)
+inline void formatStats(std::stringstream & out, const TInsertDistr & counts, const Pair<unsigned, unsigned> & firstLast)
 {
     unsigned outputLength = firstLast.i2 - firstLast.i1 + 1;
     reserve(out, outputLength * 10);
@@ -149,7 +184,7 @@ void formatStats(std::stringstream & out, const TInsertDistr & counts, const Pai
     }
 }
 //Write stats to file or std::out
-void writeStats(const std::stringstream & out, const ProgramOptions & options)
+inline void writeStats(const std::stringstream & out, const ProgramOptions & options)
 {
     if (empty(options.outPath))
     {
@@ -172,7 +207,7 @@ void writeStats(const std::stringstream & out, const ProgramOptions & options)
     }
 }
 //Wrapper for calling getFirstLast, formatStats and writeStats
-void wrapOutput (const TInsertDistr & counts, const ProgramOptions & options)
+inline void wrapOutput (const TInsertDistr & counts, const ProgramOptions & options)
 {
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
     std::stringstream out;

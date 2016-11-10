@@ -24,7 +24,7 @@ all: BAMQC
 
 BAMQC:BAMQC.o
 
-BAMQC.o: BAMQC.cpp BAMQC.h parse.h
+BAMQC.o: BAMQC.cpp BAMQC.h parse.h catg.h
 
 clean:
 	rm -f *.o BAMQC
