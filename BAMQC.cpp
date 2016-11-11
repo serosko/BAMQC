@@ -1,4 +1,4 @@
-#include <BAMQC.h>
+#include <catg.h>
 
 int main(int argc, char const ** argv)
 {
@@ -15,17 +15,18 @@ int main(int argc, char const ** argv)
     loadBAM(bamFile, options.inPath);
     BamHeader header;                                                   //Read header to get to right position in file
     readHeader(header, bamFile);
-    if (options.insDist)
+    if (options.insDist)                                                //InsertSize Distribution
     {
-        TInsertDistr counts = "";
-        wrapCountInsertSize(counts, bamFile, options);
-        wrapOutput(counts, options);
+        TInsertDistr InsertCounts = "";
+        wrapCountInsertSize(InsertCounts, bamFile, options);
+        wrapOutput(InsertCounts, options);
     }
-    if (options.catg)
+    if (options.catg)                                                   // CCG > CAG or CGG > CTG Artifact check
     {
         FaiIndex faiIndex;
         loadRefIdx(faiIndex, options.refPath);
-
+        unsigned oxoCounts = getArtifactCount(bamFile, faiIndex, options);
+        std::cout << oxoCounts << std::endl;
     }
     return 0;
 }

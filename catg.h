@@ -1,4 +1,4 @@
-#include <BAMQC.h>
+#include<BAMQC.h>
 #include <seqan/find.h>
 
 using namespace seqan;
@@ -22,7 +22,7 @@ inline bool checkRecordCAGT (const BamAlignmentRecord & record, const ProgramOpt
 }
 
 //scans a String for occurences of "needle" using shift-or algorithm, saves occurences in occ and return their ammount
-inline int findTriplet(String<unsigned> & occ, const Dna5String & haystack, const Dna5String & needle)
+inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String & needle)
 {
     Finder<Dna5String> finder(haystack);
     Pattern<Dna5String, ShiftOr> pattern(needle);
@@ -37,9 +37,9 @@ inline int findTriplet(String<unsigned> & occ, const Dna5String & haystack, cons
 
 //Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
 //Call checkRecordCAGT before looking for triplet.
-//Returns number of hits in next sequence with hits
+//Return number of hits in next sequence with hits
 inline int findNextTriplet(String<unsigned> & occ,
-                    bamFileIn & bamFile,
+                    BamFileIn & bamFile,
                     BamAlignmentRecord & record,
                     const ProgramOptions & options)
 {
@@ -48,15 +48,13 @@ inline int findNextTriplet(String<unsigned> & occ,
         readRecord(record, bamFile);
         if (checkRecordCAGT(record, options))
         {
-            Dna5String needle = "";
+            Dna5String needle;
             if (hasFlagFirst(record))                           //Select proper pattern for first/last mate
-                needle = "CAG";
+                needle = (Dna5String)"CAG";
             else if (hasFlagLast(record))
-                needle = "CTG";
+                needle = (Dna5String)"CTG";
             else continue;                                      //Skip record without proper first/second mate flag.
-            String<unsigned> occ = "";
-            reserve(occ, 5);
-            unsigned c = findTriplet(occ, record.seq, needle);
+            unsigned c = findTriplet(occ, (Dna5String)record.seq, needle);
             if (c != 0)                                         //If there were occurences of the pattern...
                 return c;
         }
@@ -65,11 +63,10 @@ inline int findNextTriplet(String<unsigned> & occ,
 }
 
 //Takes a sequence id (chr) and a position and returns the triplet of the reference genome at that position +- 1
-inline Infix<Dna5String>::Type getRefAt (FaiIndex faiIndex, CharString id, unsigned pos)
+inline Infix<Dna5String>::Type getRefAt (FaiIndex & faiIndex, CharString id, unsigned pos)
 {
-    Dna5String dummy = "";
-    Infix<Dna5String>::Type res = infix(dummy, 0, 1);
     unsigned idx = 0;                                           //Holder for position of id in index
+    Dna5String res = "";
     if (!getIdByName(idx, faiIndex, id))                        //Get position of sequence by its ID and save it in idx
     {
         std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
@@ -77,7 +74,9 @@ inline Infix<Dna5String>::Type getRefAt (FaiIndex faiIndex, CharString id, unsig
     }
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
         pos = sequenceLength(faiIndex, idx) - 1;
-    readRegion(res, faiIndex, idx, pos - 1, pos + 2);  //Get infix
+    unsigned begin = pos - 1;
+    unsigned end = pos + 2;
+    readRegion(res, faiIndex, idx, begin, end);  //Get infix
     return res;
 }
 
@@ -91,13 +90,14 @@ inline bool checkContext(Infix<Dna5String>::Type & ref, bool firstMate)
         return (ref == "CGG");
 }
 
-//Wrapper for calling all functions necessary for finding the all CCG > CAG or CGG > CTG occurences.
+//Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences.
 //Returns the number of occurences.
-inline unsigned getArtifactCount(const BamFileIn & bamFile, faiIndex & faiIndex, ProgramOptions & options)
+inline unsigned getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const ProgramOptions & options)
 {
     unsigned hits = 0;                  //counter for verified hits.
     BamAlignmentRecord record;
-    String<unsigned>  occ = "";
+    String<unsigned> occ = "";
+    reserve(occ, 5);
     while (!atEnd(bamFile))
     {
         unsigned c = 0;                 //counter for number of occurences in next record having any occurences
@@ -106,7 +106,7 @@ inline unsigned getArtifactCount(const BamFileIn & bamFile, faiIndex & faiIndex,
             for (unsigned i = 0; i < c; ++i)
             {
                 Infix<Dna5String>::Type ref = getRefAt(faiIndex,  getContigName(record, bamFile), occ[i]);
-                if (checkContext(ref, hasFlagFirst(record)));
+                if (checkContext(ref, hasFlagFirst(record)))
                     ++hits;
             }
     }
