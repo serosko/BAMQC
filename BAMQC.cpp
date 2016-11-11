@@ -24,7 +24,8 @@ int main(int argc, char const ** argv)
     if (options.catg)                                                   // CCG > CAG or CGG > CTG Artifact check
     {
         FaiIndex faiIndex;
-        loadRefIdx(faiIndex, options.refPath);
+        if(!loadRefIdx(faiIndex, toCString(options.refPath)))
+            return 1;
         unsigned oxoCounts = getArtifactCount(bamFile, faiIndex, options);
         std::cout << oxoCounts << std::endl;
     }

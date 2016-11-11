@@ -50,9 +50,9 @@ inline int findNextTriplet(String<unsigned> & occ,
         {
             Dna5String needle;
             if (hasFlagFirst(record))                           //Select proper pattern for first/last mate
-                needle = (Dna5String)"CAG";
-            else if (hasFlagLast(record))
                 needle = (Dna5String)"CTG";
+            else if (hasFlagLast(record))
+                needle = (Dna5String)"CAG";
             else continue;                                      //Skip record without proper first/second mate flag.
             unsigned c = findTriplet(occ, (Dna5String)record.seq, needle);
             if (c != 0)                                         //If there were occurences of the pattern...
@@ -63,31 +63,29 @@ inline int findNextTriplet(String<unsigned> & occ,
 }
 
 //Takes a sequence id (chr) and a position and returns the triplet of the reference genome at that position +- 1
-inline Infix<Dna5String>::Type getRefAt (FaiIndex & faiIndex, CharString id, unsigned pos)
+inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsigned pos)
 {
     unsigned idx = 0;                                           //Holder for position of id in index
-    Dna5String res = "";
+    ref = "";
     if (!getIdByName(idx, faiIndex, id))                        //Get position of sequence by its ID and save it in idx
     {
         std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-        return res;
+        return 1;
     }
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
-        pos = sequenceLength(faiIndex, idx) - 1;
-    unsigned begin = pos - 1;
-    unsigned end = pos + 2;
-    readRegion(res, faiIndex, idx, begin, end);  //Get infix
-    return res;
+        pos = sequenceLength(faiIndex, idx) - 2;
+    readRegion(ref, faiIndex, idx, pos, pos + 3);  //Get infix
+    return 0;
 }
 
 //Takes the infix from the reference and and compares it to the artifact context.
 //Return true if it is a CCG > CAG (on first mate) or CGG > CTG (second mate) change, false otherwise
-inline bool checkContext(Infix<Dna5String>::Type & ref, bool firstMate)
+inline bool checkContext(const Dna5String & ref, bool firstMate)
 {
     if (firstMate)
-        return (ref == "CCG");
-    else
         return (ref == "CGG");
+    else
+        return (ref == "CCG");
 }
 
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences.
@@ -98,6 +96,7 @@ inline unsigned getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const
     BamAlignmentRecord record;
     String<unsigned> occ = "";
     reserve(occ, 5);
+    Dna5String ref = "";                //Will hold triplet of reference after call of getRefAt
     while (!atEnd(bamFile))
     {
         unsigned c = 0;                 //counter for number of occurences in next record having any occurences
@@ -105,7 +104,9 @@ inline unsigned getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const
         if (c > 0)
             for (unsigned i = 0; i < c; ++i)
             {
-                Infix<Dna5String>::Type ref = getRefAt(faiIndex,  getContigName(record, bamFile), occ[i]);
+                getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
+                std::cout << hasFlagFirst(record) << ":";               //Todo Look why only CGG is reported as ref, even in reverse strand
+                std::cout << ref << std::endl;
                 if (checkContext(ref, hasFlagFirst(record)))
                     ++hits;
             }

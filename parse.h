@@ -104,7 +104,7 @@ inline int inputCheck(const ProgramOptions & options)
 {
     if (!(options.insDist || options.catg))
     {
-        std::cout << "Error: No checks selected. Nothing to be done. Terminating.";
+        std::cout << "Error: No checks selected. Nothing to be done. Terminating.\n";
         return 1;
     }
     //check if both or none of catg-flag and reference genome are given.
@@ -140,15 +140,15 @@ inline int loadRefIdx(FaiIndex & faiIndex, const CharString & refFileName)
         if (!build(faiIndex, toCString(refFileName)))
         {
             std::cerr << "ERROR: Index could not be loaded or built.\n";
-            return 1;
+            return 0;
         }
         if (!save(faiIndex))
         {
             std::cerr << "ERROR: Index could not be written do disk.\n";
-            return 1;
+            return 0;
         }
     }
-    return 0;
+    return 1;
 }
 /////////////////////Output functions////////////////////////
 //Dertermine first an last non-zero insert size for cleaner output
