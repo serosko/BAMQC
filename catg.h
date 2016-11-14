@@ -29,6 +29,7 @@ inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String &
     unsigned c = 0;
     while (find(finder, pattern))
     {
+            std::cout << "Pattern " << needle << " found at " << beginPosition(finder) << std::endl;
             appendValue(occ, beginPosition(finder));
             ++c;
     }
@@ -43,23 +44,39 @@ inline int findNextTriplet(String<unsigned> & occ,
                     BamAlignmentRecord & record,
                     const ProgramOptions & options)
 {
+    unsigned c = 0;
     while (!atEnd(bamFile))
     {
         readRecord(record, bamFile);
         if (checkRecordCAGT(record, options))
         {
             Dna5String needle;
-            if (hasFlagFirst(record))                           //Select proper pattern for first/last mate
-                needle = (Dna5String)"CTG";
+            if (hasFlagFirst(record))                           //Select proper pattern for first/last mate of read pair
+            {
+                if (!hasFlagRC(record))                         //Also consider if read is reverse complement
+                    needle = (Dna5String)"CTG";
+                else
+                    needle = (Dna5String)"CAG";
+            }
             else if (hasFlagLast(record))
-                needle = (Dna5String)"CAG";
-            else continue;                                      //Skip record without proper first/second mate flag.
-            unsigned c = findTriplet(occ, (Dna5String)record.seq, needle);
+            {
+                if (!hasFlagRC(record))
+                    needle = (Dna5String)"CAG";
+                else
+                    needle = (Dna5String)"CTG";
+            }
+            else
+            {
+                continue;                                      //Skip record without proper first/second mate flag.
+            }
+            c = findTriplet(occ, (Dna5String)record.seq, needle);
+            for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
+                occ[i] += record.beginPos;
             if (c != 0)                                         //If there were occurences of the pattern...
                 return c;
         }
     }
-    return 0;
+    return c;
 }
 
 //Takes a sequence id (chr) and a position and returns the triplet of the reference genome at that position +- 1
@@ -75,17 +92,28 @@ inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsig
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
         pos = sequenceLength(faiIndex, idx) - 2;
     readRegion(ref, faiIndex, idx, pos, pos + 3);  //Get infix
+    std::cout << "Pos: " << pos << "-" << pos + 3 << "; Ref: " << ref << std::endl;
     return 0;
 }
 
 //Takes the infix from the reference and and compares it to the artifact context.
 //Return true if it is a CCG > CAG (on first mate) or CGG > CTG (second mate) change, false otherwise
-inline bool checkContext(const Dna5String & ref, bool firstMate)
+inline bool checkContext(const Dna5String & ref, bool firstMate, bool rc)
 {
     if (firstMate)
-        return (ref == "CGG");
+    {
+        if (!rc)
+            return (ref == "CGG");
+        else
+            return (ref == "CCG");
+    }
     else
-        return (ref == "CCG");
+    {
+        if (!rc)
+            return (ref == "CCG");
+        else
+            return (ref == "CGG");
+    } 
 }
 
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences.
@@ -99,15 +127,16 @@ inline unsigned getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const
     Dna5String ref = "";                //Will hold triplet of reference after call of getRefAt
     while (!atEnd(bamFile))
     {
+        clear(occ);
         unsigned c = 0;                 //counter for number of occurences in next record having any occurences
         c = findNextTriplet(occ, bamFile, record, options);
         if (c > 0)
             for (unsigned i = 0; i < c; ++i)
             {
                 getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
-                std::cout << hasFlagFirst(record) << ":";               //Todo Look why only CGG is reported as ref, even in reverse strand
+                std::cout << hasFlagFirst(record) << ":";
                 std::cout << ref << std::endl;
-                if (checkContext(ref, hasFlagFirst(record)))
+                if (checkContext(ref, hasFlagFirst(record), hasFlagRC(record)))
                     ++hits;
             }
     }
