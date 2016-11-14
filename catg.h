@@ -40,39 +40,57 @@ inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String &
 //Call checkRecordCAGT before looking for triplet.
 //Return number of hits in next sequence with hits
 inline int findNextTriplet(String<unsigned> & occ,
-                    BamFileIn & bamFile,
-                    BamAlignmentRecord & record,
-                    const ProgramOptions & options)
+                           String<unsigned> & nocc,
+                           BamFileIn & bamFile,
+                           BamAlignmentRecord & record,
+                           const ProgramOptions & options)
 {
     unsigned c = 0;
+    unsigned nc = 0;
     while (!atEnd(bamFile))
     {
         readRecord(record, bamFile);
         if (checkRecordCAGT(record, options))
         {
             Dna5String needle;
+            Dna5String revNeedle;
             if (hasFlagFirst(record))                           //Select proper pattern for first/last mate of read pair
             {
                 if (!hasFlagRC(record))                         //Also consider if read is reverse complement
+                {
                     needle = (Dna5String)"CTG";
+                    revNeedle = (Dna5String)"CAG";
+                }
                 else
+                {
                     needle = (Dna5String)"CAG";
+                    revNeedle = (Dna5String)"CTG";
+                }
             }
             else if (hasFlagLast(record))
             {
                 if (!hasFlagRC(record))
+                {
                     needle = (Dna5String)"CAG";
+                    revNeedle = (Dna5String)"CTG";
+                }
                 else
+                {
                     needle = (Dna5String)"CTG";
+                    revNeedle = (Dna5String)"CAG";
+                }
             }
             else
             {
-                continue;                                      //Skip record without proper first/second mate flag.
+                continue;                                       //Skip record without proper first/second mate flag.
             }
             c = findTriplet(occ, (Dna5String)record.seq, needle);
             for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
                 occ[i] += record.beginPos;
-            if (c != 0)                                         //If there were occurences of the pattern...
+            nc = findTriplet(nocc, (Dna5String)record.seq, revNeedle);
+            for (unsigned i = 0; i < length(nocc); ++i)             //Correct pos in occ for starting position of alignment
+                nocc[i] += record.beginPos;
+            if (c || nc)                                            //If there were occurences of the pattern...
                 return c;
         }
     }
@@ -115,30 +133,59 @@ inline bool checkContext(const Dna5String & ref, bool firstMate, bool rc)
             return (ref == "CGG");
     } 
 }
+//Vice-versa than check Context.
+inline bool checkNAContext(const Dna5String & ref, bool firstMate, bool rc)
+{
+    if (firstMate)
+    {
+        if (!rc)
+            return (ref == "CCG");
+        else
+            return (ref == "CGG");
+    }
+    else
+    {
+        if (!rc)
+            return (ref == "CGG");
+        else
+            return (ref == "CCG");
+    } 
+}
 
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences.
 //Returns the number of occurences.
-inline unsigned getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const ProgramOptions & options)
+inline double getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const ProgramOptions & options)
 {
     unsigned hits = 0;                  //counter for verified hits.
+    unsigned nonHits = 0;               //counter for non artifactual conversions
     BamAlignmentRecord record;
     String<unsigned> occ = "";
+    reserve(occ, 5);
+    String<unsigned> nocc = "";
     reserve(occ, 5);
     Dna5String ref = "";                //Will hold triplet of reference after call of getRefAt
     while (!atEnd(bamFile))
     {
         clear(occ);
-        unsigned c = 0;                 //counter for number of occurences in next record having any occurences
-        c = findNextTriplet(occ, bamFile, record, options);
-        if (c > 0)
-            for (unsigned i = 0; i < c; ++i)
-            {
-                getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
-                std::cout << hasFlagFirst(record) << ":";
-                std::cout << ref << std::endl;
-                if (checkContext(ref, hasFlagFirst(record), hasFlagRC(record)))
-                    ++hits;
-            }
+        clear(nocc);
+        findNextTriplet(occ, nocc, bamFile, record, options);
+        for (unsigned i = 0; i < length(occ); ++i)
+        {
+            getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
+            if (checkContext(ref, hasFlagFirst(record), hasFlagRC(record)))
+                ++hits;
+        }
+        for (unsigned j = 0; j < length(nocc); ++j)
+        {
+            getRefAt(ref, faiIndex,  getContigName(record, bamFile), nocc[j]);
+            if (checkNAContext(ref, hasFlagFirst(record), hasFlagRC(record)))
+                ++nonHits;
+        }
     }
-    return hits;
+    std::cout << "hits: " << hits << std::endl;
+    std::cout << "non-hits: " << nonHits << std::endl;
+    if (nonHits != 0)
+        return (double)hits / (double)nonHits;
+    else
+        return hits;
 }

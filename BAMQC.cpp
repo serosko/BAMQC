@@ -26,8 +26,9 @@ int main(int argc, char const ** argv)
         FaiIndex faiIndex;
         if(!loadRefIdx(faiIndex, toCString(options.refPath)))
             return 1;
-        unsigned oxoCounts = getArtifactCount(bamFile, faiIndex, options);
-        std::cout << oxoCounts << std::endl;
+        double oxoCounts = getArtifactCount(bamFile, faiIndex, options);
+        std::cout << std::endl << std::endl;
+        std::cout << "Artifact ratio: " << oxoCounts << std::endl;
     }
     return 0;
 }
