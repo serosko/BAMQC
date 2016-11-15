@@ -1,3 +1,4 @@
+//Author: Sebastian Roskosch <Sebastian.Roskosch[at]bihealth.de>
 #include <BAMQC.h>
 
 int main(int argc, char const ** argv)

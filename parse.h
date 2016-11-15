@@ -1,3 +1,4 @@
+//Author: Sebastian Roskosch <Sebastian.Roskosch[at]bihealth.de>
 #include <seqan/arg_parse.h>
 #include <seqan/bam_io.h>
 #include <seqan/seq_io.h>
