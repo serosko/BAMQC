@@ -34,10 +34,10 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
                                                     char const ** argv)
 {
     ArgumentParser parser("BAMQC");
-    setShortDescription(parser, "Simple quality-control for BAM-files.");
-    addUsageLine(parser, "BAM_FILE1 [OPTIONS] [-O Output_File]");
+    setShortDescription(parser, "Simple quality-control for (single-sample) BAM-files.");
+    addUsageLine(parser, "BAM_FILE [OPTIONS] [-O Output_File]");
     setDate(parser, __DATE__);
-    setVersion(parser, "0.0.1");
+    setVersion(parser, "1.0.0");
     
     addSection(parser, "I/O Options");
     ArgParseArgument fileArg(ArgParseArgument::INPUT_FILE, "FILE", false);
@@ -50,11 +50,11 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     setValidValues(parser, "reference", "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
     
     addOption(parser, seqan::ArgParseOption(
-    "oi", "output-file-inserts", "Path to the output file for the insert-size distribution.",
+    "oi", "output-file-inserts", "Path to output file for the insert-size distribution.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
     
     addOption(parser, seqan::ArgParseOption(
-    "oc", "output-file-conversions", "Path to the output file for the C>A/G>T-Artifact-check.",
+    "oc", "output-file-conversions", "Path to output file for the C>A/G>T-Artifact-check.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
     
     addSection(parser, "General Options");
@@ -68,7 +68,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addSection(parser, "Insert-size-distribution Options");
     addOption(parser, seqan::ArgParseOption(
               "i", "insert-size-distribution",
-              "Counts the insert size of each valid read-pair."));
+              "Counts the insert size of each valid read-pair. Output to standard output if -oi with path is not specified."));
     
     addOption(parser, seqan::ArgParseOption(
     "m", "max-insert", "Maximum insert size. Sizes above will be ignored.",
@@ -79,7 +79,24 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addSection(parser, "C>A/G>T-Artifact Options");
     addOption(parser, seqan::ArgParseOption(
               "c", "cagt-artifact",
-              "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013)). Requires reference genome."));
+              "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013))."
+              "Requires reference genome. Output to standard output if -oc with path is not specified."));
+    
+    addTextSection(parser, "Examples");
+    addListItem(parser,
+            "\\fBBAMQC\\fP \\fBfile.bam\\fP \\fB-i\\fP",
+            "Calculate insert-size distribution of mapped reads in \"file.bam\" and print output to standard output.");
+    addListItem(parser,
+            "\\fBBAMQC\\fP \\fBfile.bam\\fP \\fB-r reference.fa\\fP \\fB-i\\fP \\fB-c\\fP",
+            "Check if reads in \"file.bam\" show an increased ammount of strand specific C>A/G>T conversions. and "
+            "print output to standard output.");
+     addListItem(parser,
+        "\\fBBAMQC\\fP \\fBfile.bam\\fP \\fB-r reference.fa\\fP \\fB-oi inserts.txt\\fP \\fB-oc conversions.txt\\fP "
+        "\\fB-mmq 30\\fP \\fB-m 500\\fP",
+        "Perform both of the above checks in one run, but only consider alignments with mapping-quality of at least phred 30 (both checks) "
+        "and a maximum considered insert-size of 500 (insert-size calculation). Output is saved in \"inserts.txt\" and \"conversions.txt.\"");
+
+
 
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
