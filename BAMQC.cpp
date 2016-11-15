@@ -1,4 +1,4 @@
-#include <catg.h>
+#include <BAMQC.h>
 
 int main(int argc, char const ** argv)
 {
@@ -15,21 +15,37 @@ int main(int argc, char const ** argv)
     loadBAM(bamFile, options.inPath);
     BamHeader header;                                                   //Read header to get to right position in file
     readHeader(header, bamFile);
-    if (options.insDist)                                                //InsertSize Distribution
+    if (options.catg && options.insDist)                                //Perform both checks in one run  to reduce I/O
     {
         TInsertDistr InsertCounts = "";
-        wrapCountInsertSize(InsertCounts, bamFile, options);
-        wrapOutput(InsertCounts, options);
-    }
-    if (options.catg)                                                   // CCG > CAG or CGG > CTG Artifact check
-    {
-        FaiIndex faiIndex;
-        if(!loadRefIdx(faiIndex, toCString(options.refPath)))
+        resize(InsertCounts, options.maxInsert + 1, 0);
+        unsigned artifactConv [2][2] = {0};                              //table for all artifacual conversions
+        unsigned normalConv [2][2] = {0};                                //table for all non-artifactual conversions
+        if(!wrapDoAll(artifactConv, normalConv, InsertCounts, bamFile, options))
             return 1;
-        Pair<unsigned, unsigned> oxoCounts = getArtifactCount(bamFile, faiIndex, options);
-        std::cout << "Artifact count:\t\t" << oxoCounts.i1 << std::endl
-                  << "Other conversions:\t" << oxoCounts.i2 << std::endl
-                  << "Ratio:\t\t\t" << (double)oxoCounts.i1 / (double)oxoCounts.i2 << std::endl;
+        wrapOutputInserts(InsertCounts, options);
+        wrapOutputArtifacts(artifactConv, normalConv, options);
+        return 0;
     }
+    else
+    {
+        if (options.insDist)                                                //InsertSize Distribution
+        {
+        TInsertDistr InsertCounts = "";
+        wrapCountInsertSize(InsertCounts, bamFile, options);
+        wrapOutputInserts(InsertCounts, options);
+        }
+        if (options.catg)                                                   // CCG > CAG or CGG > CTG Artifact check
+        {
+            FaiIndex faiIndex;
+            if(!loadRefIdx(faiIndex, toCString(options.refPath)))
+                return 1;
+            unsigned artifactConv [2][2] = {0};
+            unsigned normalConv [2][2] = {0};
+            getArtifactCount(artifactConv, normalConv, bamFile, faiIndex, options);
+            wrapOutputArtifacts(artifactConv, normalConv, options);
+        }
+    }
+    
     return 0;
 }

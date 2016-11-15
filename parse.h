@@ -20,12 +20,12 @@ struct ProgramOptions //Struct holding all program options.
 {
     CharString inPath;
     CharString refPath;
-    CharString outPath;
+    CharString outPathInserts;
+    CharString outPathArtifacts;
     bool insDist = false;
     int maxInsert;
     unsigned minMapQ;
     bool catg = false;
-    unsigned minMapQCAGT;
 };
 /////////////////////Parsing functions////////////////////////
 //Parse the command line and/or display help message.
@@ -50,8 +50,20 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     setValidValues(parser, "reference", "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
     
     addOption(parser, seqan::ArgParseOption(
-    "O", "output-file", "Path to the output file.",
+    "oi", "output-file-inserts", "Path to the output file for the insert-size distribution.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
+    
+    addOption(parser, seqan::ArgParseOption(
+    "oc", "output-file-conversions", "Path to the output file for the C>A/G>T-Artifact-check.",
+    seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
+    
+    addSection(parser, "General Options");
+    addOption(parser, seqan::ArgParseOption(
+    "mmq", "min-mapq", "Minimum mapping quality.",
+    seqan::ArgParseArgument::INTEGER, "INT"));
+    setDefaultValue(parser, "min-mapq", "25");
+    setMinValue(parser, "min-mapq", "0");
+    setMaxValue(parser, "min-mapq", "244");
     
     addSection(parser, "Insert-size-distribution Options");
     addOption(parser, seqan::ArgParseOption(
@@ -64,25 +76,11 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     setDefaultValue(parser, "max-insert", "1000");
     setMinValue(parser, "max-insert", "100");
     
-    addOption(parser, seqan::ArgParseOption(
-    "mmq", "min-mapq", "Minimum mapping quality.",
-    seqan::ArgParseArgument::INTEGER, "INT"));
-    setDefaultValue(parser, "min-mapq", "25");
-    setMinValue(parser, "min-mapq", "0");
-    setMaxValue(parser, "min-mapq", "244");
-    
     addSection(parser, "C>A/G>T-Artifact Options");
     addOption(parser, seqan::ArgParseOption(
               "c", "cagt-artifact",
               "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013)). Requires reference genome."));
-    
-    addOption(parser, seqan::ArgParseOption(
-    "mmqA", "min-mapq-artifacts", "Minimum mapping quality when checking for C>A/G>T artifacts.",
-    seqan::ArgParseArgument::INTEGER, "INT"));
-    setDefaultValue(parser, "min-mapq-artifacts", "25");
-    setMinValue(parser, "min-mapq-artifacts", "0");
-    setMaxValue(parser, "min-mapq-artifacts", "244");
-    
+
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
     //Terminate on error
@@ -91,17 +89,21 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     //Get path of input BAM.
     getArgumentValue(options.inPath, parser, 0);
     getOptionValue(options.refPath, parser, "reference");
-    getOptionValue(options.outPath, parser, "output-file");
+    getOptionValue(options.outPathInserts, parser, "output-file-inserts");
+    getOptionValue(options.outPathArtifacts, parser, "output-file-conversions");
     options.insDist = isSet(parser, "insert-size-distribution");
     getOptionValue(options.maxInsert, parser, "max-insert");
     getOptionValue(options.minMapQ, parser, "min-mapq");
     options.catg = isSet(parser, "cagt-artifact");
-    getOptionValue(options.minMapQCAGT, parser, "min-mapq-artifacts");
     return ArgumentParser::PARSE_OK;
 }
 //Check parameters for consistency. Return 1 on inconsistencies and 0 on pass.
-inline int inputCheck(const ProgramOptions & options)
+inline int inputCheck(ProgramOptions & options)
 {
+    if (!empty(options.outPathInserts))
+        options.insDist = true;
+    if (!empty(options.outPathArtifacts))
+        options.catg = true;
     if (!(options.insDist || options.catg))
     {
         std::cout << "Error: No checks selected. Nothing to be done. Terminating.\n";
@@ -110,12 +112,12 @@ inline int inputCheck(const ProgramOptions & options)
     //check if both or none of catg-flag and reference genome are given.
     if(options.catg && empty(options.refPath))
     {
-        std::cout << "Error: catg-artifact flag set, but no reference genome has been given. Terminating.\n";
+        std::cout << "Error: Missing reference genome for C>A/G>T artifact-check. Terminating.\n";
         return 1;
     }
     else if(!options.catg && !empty(options.refPath))
     {
-        std::cout << "Error: Reference genome given, but no required (no flag set for catg-check). Terminating.\n";
+        std::cout << "Error: Reference genome given, but no required (consider setting the -i flag or giving a path for the output using -oc option). Terminating.\n";
         return 1;
     }
     return 0; //all go
@@ -180,25 +182,40 @@ inline void formatStats(std::stringstream & out, const TInsertDistr & counts, co
     reserve(out, outputLength * 10);
     for (unsigned i = firstLast.i1; i <= firstLast.i2; ++i)
     {
-        out << i << '\t' << counts[i] << '\n';    //Todo fix bug
+        out << i << '\t' << counts[i] << '\n';
     }
 }
-//Write stats to file or std::out
-inline void writeStats(const std::stringstream & out, const ProgramOptions & options)
+inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [2][2], unsigned (& normalConv) [2][2])
 {
-    if (empty(options.outPath))
+    unsigned hits = artifactConv[0][0] + artifactConv[0][1] + artifactConv[1][0] + artifactConv[1][1];
+    unsigned nonHits = normalConv[0][0] + normalConv[0][1] + normalConv[1][0] + normalConv[1][1];
+    out << "Artifact-like Conversions: " << hits << " total\n"
+        << "\tForward\tReverse\n"
+        << "1st\t" << artifactConv[1][0] << "\t" << artifactConv[1][1] << std::endl
+        << "2nd\t" << artifactConv[0][0] << "\t" << artifactConv[0][1] << std::endl << std::endl
+        << "Other Conversions: " << nonHits << " total\n"
+        << "\tForward\tReverse\n"
+        << "1st\t" << normalConv[1][0] << "\t" << normalConv[1][1] << std::endl
+        << "2nd\t" << normalConv[0][0] << "\t" << normalConv[0][1] << std::endl << std::endl
+        << "Fraction of artifact-like conversions: " << (double)hits / double(hits + nonHits) << std::endl;
+}
+
+//Write stats to file or std::out
+inline void writeStats(const std::stringstream & out, const CharString & outPath)
+{
+    if (empty(outPath))
     {
         std::cout << out.str();
     }
     else
     {
         std::ofstream outStream;
-        outStream.open(toCString(options.outPath));
+        outStream.open(toCString(outPath));
         if (outStream)
         {
             outStream << out.str();
             outStream.close();
-            std::cout << "Output written to " << options.outPath << std::endl;
+            std::cout << "Output written to " << outPath << std::endl;
         }
         else
         {
@@ -207,10 +224,19 @@ inline void writeStats(const std::stringstream & out, const ProgramOptions & opt
     }
 }
 //Wrapper for calling getFirstLast, formatStats and writeStats
-inline void wrapOutput (const TInsertDistr & counts, const ProgramOptions & options)
+inline void wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
 {
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
     std::stringstream out;
     formatStats(out, counts, firstLast);
-    writeStats(out, options);
+    writeStats(out, options.outPathInserts);
+}
+
+inline void wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
+                                 unsigned (& normalConv) [2][2],
+                                 const ProgramOptions & options)
+{
+    std::stringstream out;
+    formatArtifacts(out, artifactConv, normalConv);
+    writeStats(out, options.outPathArtifacts);
 }
