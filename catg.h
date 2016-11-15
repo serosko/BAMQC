@@ -29,7 +29,6 @@ inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String &
     unsigned c = 0;
     while (find(finder, pattern))
     {
-            std::cout << "Pattern " << needle << " found at " << beginPosition(finder) << std::endl;
             appendValue(occ, beginPosition(finder));
             ++c;
     }
@@ -38,7 +37,6 @@ inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String &
 
 //Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
 //Call checkRecordCAGT before looking for triplet.
-//Return number of hits in next sequence with hits
 inline int findNextTriplet(String<unsigned> & occ,
                            String<unsigned> & nocc,
                            BamFileIn & bamFile,
@@ -110,7 +108,6 @@ inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsig
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
         pos = sequenceLength(faiIndex, idx) - 2;
     readRegion(ref, faiIndex, idx, pos, pos + 3);  //Get infix
-    std::cout << "Pos: " << pos << "-" << pos + 3 << "; Ref: " << ref << std::endl;
     return 0;
 }
 
@@ -152,9 +149,9 @@ inline bool checkNAContext(const Dna5String & ref, bool firstMate, bool rc)
     } 
 }
 
-//Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences.
-//Returns the number of occurences.
-inline double getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const ProgramOptions & options)
+//Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences and non-artifacts.
+//Returns the number of occurences as i1 and number of non-artifactual conversions as i2
+inline Pair<unsigned, unsigned> getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const ProgramOptions & options)
 {
     unsigned hits = 0;                  //counter for verified hits.
     unsigned nonHits = 0;               //counter for non artifactual conversions
@@ -182,10 +179,5 @@ inline double getArtifactCount(BamFileIn & bamFile, FaiIndex & faiIndex, const P
                 ++nonHits;
         }
     }
-    std::cout << "hits: " << hits << std::endl;
-    std::cout << "non-hits: " << nonHits << std::endl;
-    if (nonHits != 0)
-        return (double)hits / (double)nonHits;
-    else
-        return hits;
+    return Pair<unsigned, unsigned> (hits, nonHits);
 }

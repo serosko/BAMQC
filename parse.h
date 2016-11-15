@@ -45,8 +45,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addArgument(parser, fileArg);
     
     addOption(parser, seqan::ArgParseOption(
-    "r", "reference", "Path to reference genome. Required for C>A/G>T-Artifact-check",
-    seqan::ArgParseArgument::INPUT_FILE, "r"));
+    "r", "reference", "Path to reference genome. Required for C>A/G>T-Artifact-check.",
+    seqan::ArgParseArgument::INPUT_FILE, "IN"));
     setValidValues(parser, "reference", "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
     
     addOption(parser, seqan::ArgParseOption(
@@ -96,7 +96,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     getOptionValue(options.maxInsert, parser, "max-insert");
     getOptionValue(options.minMapQ, parser, "min-mapq");
     options.catg = isSet(parser, "cagt-artifact");
-    getOptionValue(options.minMapQ, parser, "min-mapq-artifacts");
+    getOptionValue(options.minMapQCAGT, parser, "min-mapq-artifacts");
     return ArgumentParser::PARSE_OK;
 }
 //Check parameters for consistency. Return 1 on inconsistencies and 0 on pass.
