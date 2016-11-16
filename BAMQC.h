@@ -6,9 +6,7 @@
 
 using namespace seqan;
 
-
 ////////////////////General functions//////////////////////////
-
 //checks the flags and mapping quality of a record and returns false if any undesired flag is found, true otherwise.
 inline bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & options)
 {
@@ -21,7 +19,6 @@ inline bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions
         return false;
     else return true;
 }
-
 ////////////////////Insert-size distribution functions//////////////////////////
 //Get Distance from leftmost base of first mate to rightmost base of right mate 
 //(template length) from one record and add it to counter in TInsertDistr
@@ -35,7 +32,6 @@ inline int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & rec
     }
     else return 1;          //return 1 if record was right mate or longer than maxInsert (not counted)
 }
-
 //wrapper for counting the insert sizes of the whole Bam-file
 inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
 {
@@ -57,9 +53,7 @@ inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, Progr
     }
     return 0;
 }
-
 //////////////////Artifact-check functions/////////////////////
-
 //scans a String for occurences of "needle" using shift-or algorithm, saves occurences in occ and returns their ammount
 inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String & needle)
 {
@@ -73,7 +67,6 @@ inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String &
     }
     return c;
 }
-
 //Get forward and reverse needle.
 //return 1 if everything is ok, and 0 if the flags are not properly set
 inline int getNeedles(Dna5String & needle, Dna5String & revNeedle, BamAlignmentRecord & record)
@@ -109,7 +102,6 @@ inline int getNeedles(Dna5String & needle, Dna5String & revNeedle, BamAlignmentR
     else
         return 0;
 }
-
 //Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
 //Call checkRecord before looking for triplet.
 inline int findNextTriplet(String<unsigned> & occ,
@@ -141,7 +133,6 @@ inline int findNextTriplet(String<unsigned> & occ,
     }
     return c;
 }
-
 //Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
 //Additionally performs insert-size counting
 //Call checkRecord before looking for triplet. 
@@ -176,7 +167,6 @@ inline int findNextTripletAndCountInsert(String<unsigned> & occ,
     }
     return c;
 }
-
 //Takes a sequence id (chr) and a position and returns the triplet of the reference genome at that position +- 1
 inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsigned pos)
 {
@@ -192,7 +182,6 @@ inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsig
     readRegion(ref, faiIndex, idx, pos, pos + 3);  //Get infix
     return 0;
 }
-
 //Takes the infix from the reference and and compares it to the artifact context.
 //Return true if it is a CCG > CAG (on first mate) or CGG > CTG (second mate) change, false otherwise
 inline bool checkContext(const Dna5String & ref, bool firstMate, bool rc)
@@ -291,8 +280,7 @@ inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2
     }
     return Pair<unsigned, unsigned> (hits, nonHits);
 }
-
-///////////////wrapper function for calling both checks in one run/////////////
+///////////////Wrapper function for calling both checks in one run/////////////
 //Return 1 on error, 0 otherwise
 inline int wrapDoAll(unsigned (& artifactConv) [2][2],
                      unsigned (& normalConv) [2][2],

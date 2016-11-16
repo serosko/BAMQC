@@ -11,11 +11,6 @@ using namespace seqan;
 //index 0 holds the number of segments without a mapped partner or the i
 //information is not available
 typedef String<unsigned> TInsertDistr;
-//FragmentStore, holding info on the refernce sequence
-typedef FragmentStore<> TStore;
-typedef Value<TStore::TContigStore>::Type TContig;
-typedef Value<TStore::TAlignedReadStore>::Type TAlignedRead;
-
 
 struct ProgramOptions //Struct holding all program options.
 {
@@ -44,20 +39,20 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     ArgParseArgument fileArg(ArgParseArgument::INPUT_FILE, "FILE", false);
     setValidValues(fileArg, "bam sam");
     addArgument(parser, fileArg);
-    
+
     addOption(parser, seqan::ArgParseOption(
     "r", "reference", "Path to reference genome. Required for C>A/G>T-Artifact-check.",
     seqan::ArgParseArgument::INPUT_FILE, "IN"));
     setValidValues(parser, "reference", "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
-    
+
     addOption(parser, seqan::ArgParseOption(
     "oi", "output-file-inserts", "Path to output file for the insert-size distribution.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
-    
+
     addOption(parser, seqan::ArgParseOption(
     "oc", "output-file-conversions", "Path to output file for the C>A/G>T-Artifact-check.",
     seqan::ArgParseArgument::OUTPUT_FILE, "OUT"));
-    
+
     addSection(parser, "General Options");
     addOption(parser, seqan::ArgParseOption(
     "mmq", "min-mapq", "Minimum mapping quality.",
@@ -65,24 +60,24 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     setDefaultValue(parser, "min-mapq", "25");
     setMinValue(parser, "min-mapq", "0");
     setMaxValue(parser, "min-mapq", "244");
-    
+
     addSection(parser, "Insert-size-distribution Options");
     addOption(parser, seqan::ArgParseOption(
               "i", "insert-size-distribution",
               "Counts the insert size of each valid read-pair. Output to standard output if -oi with path is not specified."));
-    
+
     addOption(parser, seqan::ArgParseOption(
     "m", "max-insert", "Maximum insert size. Sizes above will be ignored.",
     seqan::ArgParseArgument::INTEGER, "INT"));
     setDefaultValue(parser, "max-insert", "1000");
     setMinValue(parser, "max-insert", "100");
-    
+
     addSection(parser, "C>A/G>T-Artifact Options");
     addOption(parser, seqan::ArgParseOption(
               "c", "cagt-artifact",
               "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013))."
               "Requires reference genome. Output to standard output if -oc with path is not specified."));
-    
+
     addTextSection(parser, "Examples");
     addListItem(parser,
             "\\fBBAMQC\\fP \\fBfile.bam\\fP \\fB-i\\fP",
@@ -125,7 +120,7 @@ inline int inputCheck(ProgramOptions & options)
         std::cout << "Error: No checks selected. Nothing to be done. Terminating.\n";
         return 1;
     }
-    //check if both or none of catg-flag and reference genome are given.
+    //check if both or none of catg-flags and reference genome are given.
     if(options.catg && empty(options.refPath))
     {
         std::cout << "Error: Missing reference genome for C>A/G>T artifact-check. Terminating.\n";
