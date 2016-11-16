@@ -220,19 +220,36 @@ inline bool checkNAContext(const Dna5String & ref, bool firstMate, bool rc)
     } 
 }
 //Forwards bamFile until record id is known again.
-inline void skipUnkown(CharString & id, BamAlignmentRecord & record,BamFileIn & bamFile, FaiIndex & faiIndex)
+//return 1 if the last contig of the file is also unknown, 0 otherwise
+inline int skipUnkown(CharString & id, BamAlignmentRecord & record,BamFileIn & bamFile, FaiIndex & faiIndex)
 {
-    unsigned tmp = 0;
-    if(!getIdByName(tmp, faiIndex, id))
+    unsigned idx = 0;
+    if(!getIdByName(idx, faiIndex, id))
     {
         std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
+        idx = 0;
         CharString skip = id;
-        while(!atEnd(bamFile) && id == skip)
+        while(!atEnd(bamFile))
         {
-            readRecord(record, bamFile);
-            id = getContigName(record, bamFile);
+            if (id == skip)
+            {
+                readRecord(record, bamFile);
+                id = getContigName(record, bamFile);
+            }
+            else if (!getIdByName(idx, faiIndex, id))
+            {
+                idx = 0;
+                std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
+                skip = id;
+                readRecord(record, bamFile);
+                id = getContigName(record, bamFile);
+            }
+            else return 0;
         }
+        std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
+        return 1;
     }
+    else return 0;
 }
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences and non-artifacts.
 //Returns the number of occurences as i1 and number of non-artifactual conversions as i2
@@ -256,7 +273,8 @@ inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2
         clear(nocc);
         findNextTriplet(occ, nocc, bamFile, record, options);
         CharString id = getContigName(record, bamFile);
-        skipUnkown(id, record, bamFile, faiIndex);
+        if(skipUnkown(id, record, bamFile, faiIndex))          //Skip records with id unkown by index.
+            return Pair<unsigned, unsigned> (hits, nonHits);
         bool isFirst = hasFlagFirst(record);
         bool isRC = hasFlagRC(record);
         for (unsigned i = 0; i < length(occ); ++i)
@@ -307,7 +325,8 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
             clear(nocc);
             findNextTripletAndCountInsert(occ, nocc, InsertCounts,bamFile, record, options);
             CharString id = getContigName(record, bamFile);
-            skipUnkown(id, record, bamFile, faiIndex);          //Skip records with id unkown by index.
+            if(skipUnkown(id, record, bamFile, faiIndex))          //Skip records with id unkown by index.
+                return 1;
             bool isFirst = hasFlagFirst(record);
             bool isRC = hasFlagRC(record);
             for (unsigned i = 0; i < length(occ); ++i)

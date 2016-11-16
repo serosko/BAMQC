@@ -188,6 +188,11 @@ Pair<unsigned, unsigned> getFirstLast (const TInsertDistr & counts)
 //Format output stats
 inline void formatStats(std::stringstream & out, const TInsertDistr & counts, const Pair<unsigned, unsigned> & firstLast)
 {
+    if (firstLast.i1 == 0 && firstLast.i2 == 0)
+    {
+        out << "No valid inserts detected.";
+        return;
+    }
     unsigned outputLength = firstLast.i2 - firstLast.i1 + 1;
     reserve(out, outputLength * 10);
     for (unsigned i = firstLast.i1; i <= firstLast.i2; ++i)
@@ -235,9 +240,14 @@ inline void writeStats(const std::stringstream & out, const CharString & outPath
 //Wrapper for calling getFirstLast, formatStats and writeStats
 inline void wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
 {
+    std::cout << "Calculating distribution borders...";
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
+    std::cout << "Done!\n";
     std::stringstream out;
+    std::cout << "Formating distribution stats for output...";
     formatStats(out, counts, firstLast);
+    std::cout << "Done!\n";
+    std::cout << "Writing distribution to file...\n";
     writeStats(out, options.outPathInserts);
 }
 
@@ -246,6 +256,9 @@ inline void wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
                                  const ProgramOptions & options)
 {
     std::stringstream out;
+    std::cout << "Formating conversions for output...";
     formatArtifacts(out, artifactConv, normalConv);
+    std::cout << "Done!\n";
+    std::cout << "Writing conversions to file...\n";
     writeStats(out, options.outPathArtifacts);
 }
