@@ -8,7 +8,7 @@ using namespace seqan;
 /////////////////////Typedefs////////////////////////
 //String holding the number of inserts of each length. Index 1 holds the number
 //of inserts with length 1, index 2 holds the number of inserts with length 2...
-//index 0 holds the number of segments without a mapped partner or the i
+//index 0 holds the number of segments without a mapped partner or the
 //information is not available
 typedef String<unsigned> TInsertDistr;
 
@@ -31,7 +31,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
 {
     ArgumentParser parser("BAMQC");
     setShortDescription(parser, "Simple quality-control for (single-sample) BAM-files.");
-    addUsageLine(parser, "BAM_FILE [OPTIONS] [-O Output_File]");
+    addUsageLine(parser, "BAM_FILE [OPTIONS]");
     setDate(parser, __DATE__);
     setVersion(parser, "1.0.0");
     
