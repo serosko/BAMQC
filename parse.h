@@ -97,8 +97,6 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
         "Perform both of the above checks in one run, but only consider alignments with mapping-quality of at least phred 30 (both checks) "
         "and a maximum considered insert-size of 500 (insert-size calculation). Output is saved in \"inserts.txt\" and \"conversions.txt.\"");
 
-
-
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
     //Terminate on error
@@ -140,7 +138,6 @@ inline int inputCheck(ProgramOptions & options)
     }
     return 0; //all go
 }
-
 /////////////////////Input-file functions////////////////////////
 //Load BAM-file.
 inline int loadBAM(BamFileIn & bamFile, const CharString & bamFileName)
@@ -217,7 +214,6 @@ inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [
         << "2nd\t" << normalConv[0][0] << "\t" << normalConv[0][1] << std::endl << std::endl
         << "Fraction of artifact-like conversions: " << (double)hits / double(hits + nonHits) << std::endl;
 }
-
 //Write stats to file or std::out
 inline void writeStats(const std::stringstream & out, const CharString & outPath)
 {

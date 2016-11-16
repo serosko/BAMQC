@@ -47,6 +47,5 @@ int main(int argc, char const ** argv)
             wrapOutputArtifacts(artifactConv, normalConv, options);
         }
     }
-    
     return 0;
 }

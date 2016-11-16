@@ -184,8 +184,8 @@ inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsig
     ref = "";
     if (!getIdByName(idx, faiIndex, id))                        //Get position of sequence by its ID and save it in idx
     {
-        std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-        return 1;
+        //std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
+        return 1;                                               //Should not happen, as skipUnknown is called beforehand
     }
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
         pos = sequenceLength(faiIndex, idx) - 2;
@@ -230,7 +230,21 @@ inline bool checkNAContext(const Dna5String & ref, bool firstMate, bool rc)
             return (ref == "CCG");
     } 
 }
-
+//Forwards bamFile until record id is known again.
+inline void skipUnkown(CharString & id, BamAlignmentRecord & record,BamFileIn & bamFile, FaiIndex & faiIndex)
+{
+    unsigned tmp = 0;
+    if(!getIdByName(tmp, faiIndex, id))
+    {
+        std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
+        CharString skip = id;
+        while(!atEnd(bamFile) && id == skip)
+        {
+            readRecord(record, bamFile);
+            id = getContigName(record, bamFile);
+        }
+    }
+}
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences and non-artifacts.
 //Returns the number of occurences as i1 and number of non-artifactual conversions as i2
 inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2],
@@ -252,11 +266,13 @@ inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2
         clear(occ);
         clear(nocc);
         findNextTriplet(occ, nocc, bamFile, record, options);
+        CharString id = getContigName(record, bamFile);
+        skipUnkown(id, record, bamFile, faiIndex);
         bool isFirst = hasFlagFirst(record);
         bool isRC = hasFlagRC(record);
         for (unsigned i = 0; i < length(occ); ++i)
         {
-            getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
+            getRefAt(ref, faiIndex,  id, occ[i]);
             if (checkContext(ref, isFirst, isRC))
             {
                 ++hits;
@@ -265,7 +281,7 @@ inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2
         }
         for (unsigned j = 0; j < length(nocc); ++j)
         {
-            getRefAt(ref, faiIndex,  getContigName(record, bamFile), nocc[j]);
+            getRefAt(ref, faiIndex,  id, nocc[j]);
             if (checkNAContext(ref, isFirst, isRC))
             {
                 ++nonHits;
@@ -302,11 +318,13 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
             clear(occ);
             clear(nocc);
             findNextTripletAndCountInsert(occ, nocc, InsertCounts,bamFile, record, options);
+            CharString id = getContigName(record, bamFile);
+            skipUnkown(id, record, bamFile, faiIndex);          //Skip records with id unkown by index.
             bool isFirst = hasFlagFirst(record);
             bool isRC = hasFlagRC(record);
             for (unsigned i = 0; i < length(occ); ++i)
             {
-                getRefAt(ref, faiIndex,  getContigName(record, bamFile), occ[i]);
+                getRefAt(ref, faiIndex, id, occ[i]);
                 if (checkContext(ref, isFirst, isRC))
                 {
                     ++hits;
@@ -315,7 +333,7 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
             }
             for (unsigned j = 0; j < length(nocc); ++j)
             {
-                getRefAt(ref, faiIndex,  getContigName(record, bamFile), nocc[j]);
+                getRefAt(ref, faiIndex, id, nocc[j]);
                 if (checkNAContext(ref, isFirst, isRC))
                 {
                     ++nonHits;
