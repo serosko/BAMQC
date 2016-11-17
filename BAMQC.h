@@ -54,18 +54,14 @@ inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, Progr
     return 0;
 }
 //////////////////Artifact-check functions/////////////////////
-//scans a String for occurences of "needle" using shift-or algorithm, saves occurences in occ and returns their ammount
-inline int findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String & needle)
+//scans a String for occurences of "needle" using shift-or algorithm, saves occurences in occ return true if found
+inline bool findTriplet(String<unsigned> & occ, Dna5String haystack, Dna5String & needle)
 {
     Finder<Dna5String> finder(haystack);
     Pattern<Dna5String, ShiftOr> pattern(needle);
-    unsigned c = 0;
     while (find(finder, pattern))
-    {
-            appendValue(occ, beginPosition(finder));
-            ++c;
-    }
-    return c;
+        appendValue(occ, beginPosition(finder));
+    return (length(occ) > 0);
 }
 //Get forward and reverse needle.
 //return 1 if everything is ok, and 0 if the flags are not properly set
@@ -102,81 +98,59 @@ inline int getNeedles(Dna5String & needle, Dna5String & revNeedle, BamAlignmentR
     else
         return 0;
 }
-//Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
-//Call checkRecord before looking for triplet.
-inline int findNextTriplet(String<unsigned> & occ,
+//Return true, if the record contains a relevant triplet, false otherwise
+inline bool findNextTriplet(String<unsigned> & occ,
                            String<unsigned> & nocc,
-                           BamFileIn & bamFile,
-                           BamAlignmentRecord & record,
-                           const ProgramOptions & options)
+                           BamAlignmentRecord & record)
 {
     unsigned c = 0;
     unsigned nc = 0;
-    while (!atEnd(bamFile))
-    {
-        readRecord(record, bamFile);
-        if (checkRecord(record, options))
-        {
-            Dna5String needle;
-            Dna5String revNeedle;
-            if (!getNeedles(needle, revNeedle, record))         //Select proper pattern for first/last mate of read pair
-                continue;                                       //Skip record without proper first/second mate flag.
-            c = findTriplet(occ, (Dna5String)record.seq, needle);
-            for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
-                occ[i] += record.beginPos;
-            nc = findTriplet(nocc, (Dna5String)record.seq, revNeedle);
-            for (unsigned i = 0; i < length(nocc); ++i)             //Correct pos in occ for starting position of alignment
-                nocc[i] += record.beginPos;
-            if (c || nc)                                            //If there were occurences of the pattern...
-                return c;
-        }
-    }
-    return c;
+    Dna5String needle;
+    Dna5String revNeedle;
+    if (!getNeedles(needle, revNeedle, record))         //Select proper pattern for first/last mate of read pair
+        return false;                                       //Skip record without proper first/second mate flag.
+    clear(occ);
+    clear(nocc);
+    c = findTriplet(occ, (Dna5String)record.seq, needle);
+    for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
+        occ[i] += record.beginPos;
+    nc = findTriplet(nocc, (Dna5String)record.seq, revNeedle);
+    for (unsigned i = 0; i < length(nocc); ++i)             //Correct pos in occ for starting position of alignment
+        nocc[i] += record.beginPos;
+    return (c || nc);                                           //If there were occurences of the pattern...
 }
 //Check each sequence using findTriplet() with the repective pattern until the pattern occurs.
 //Additionally performs insert-size counting
-//Call checkRecord before looking for triplet. 
-inline int findNextTripletAndCountInsert(String<unsigned> & occ,
+//Return true if the current record has a relevant triplet, false otherwise
+inline bool findNextTripletAndCountInsert(String<unsigned> & occ,
                            String<unsigned> & nocc,
                            TInsertDistr & InsertCounts,
-                           BamFileIn & bamFile,
                            BamAlignmentRecord & record,
                            const ProgramOptions & options)
 {
+    Dna5String needle;
+    Dna5String revNeedle;
+    if (!getNeedles(needle, revNeedle, record))         //Select proper pattern for first/last mate of read pair
+        return false;                                   //Skip record without proper first/second mate flag.
     unsigned c = 0;
     unsigned nc = 0;
-    while (!atEnd(bamFile))
-    {
-        readRecord(record, bamFile);
-        if (checkRecord(record, options))
-        {
-            countInsertSize(InsertCounts, record, options);
-            Dna5String needle;
-            Dna5String revNeedle;
-            if (!getNeedles(needle, revNeedle, record))         //Select proper pattern for first/last mate of read pair
-                continue;                                       //Skip record without proper first/second mate flag.
-            c = findTriplet(occ, (Dna5String)record.seq, needle);
-            for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
-                occ[i] += record.beginPos;
-            nc = findTriplet(nocc, (Dna5String)record.seq, revNeedle);
-            for (unsigned i = 0; i < length(nocc); ++i)             //Correct pos in occ for starting position of alignment
-                nocc[i] += record.beginPos;
-            if (c || nc)                                            //If there were occurences of the pattern...
-                return c;
-        }
-    }
-    return c;
+    clear(occ);
+    clear(nocc);
+    c = findTriplet(occ, (Dna5String)record.seq, needle);
+    for (unsigned i = 0; i < length(occ); ++i)          //Correct pos in occ for starting position of alignment
+        occ[i] += record.beginPos;
+    nc = findTriplet(nocc, (Dna5String)record.seq, revNeedle);
+    for (unsigned i = 0; i < length(nocc); ++i)             //Correct pos in occ for starting position of alignment
+        nocc[i] += record.beginPos;
+    countInsertSize(InsertCounts, record, options);
+    return (c || nc);                                            //If there were occurences of the pattern...
 }
 //Takes a sequence id (chr) and a position and returns the triplet of the reference genome at that position +- 1
 inline int getRefAt (Dna5String & ref, FaiIndex & faiIndex, CharString id, unsigned pos)
 {
     unsigned idx = 0;                                           //Holder for position of id in index
     ref = "";
-    if (!getIdByName(idx, faiIndex, id))                        //Get position of sequence by its ID and save it in idx
-    {
-        //std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-        return 1;                                               //Should not happen, as skipUnknown is called beforehand
-    }
+    getIdByName(idx, faiIndex, id);                              //Get position of sequence by its ID and save it in idx
     if (pos + 1 > sequenceLength(faiIndex, idx))       //Make sure the position lies within the boundaries of the index
         pos = sequenceLength(faiIndex, idx) - 2;
     readRegion(ref, faiIndex, idx, pos, pos + 3);  //Get infix
@@ -219,41 +193,32 @@ inline bool checkNAContext(const Dna5String & ref, bool firstMate, bool rc)
             return (ref == "CCG");
     } 
 }
-//Forwards bamFile until record id is known again.
-//return 1 if the last contig of the file is also unknown, 0 otherwise
-inline int skipUnkown(CharString & id, BamAlignmentRecord & record,BamFileIn & bamFile, FaiIndex & faiIndex)
+//Check the record and return false if it should be skippe, true otherwise.
+inline bool checkAndSkip(CharString & contig,
+                        CharString & previousContig,
+                        BamAlignmentRecord & record,
+                        BamFileIn & bamFile,
+                        FaiIndex & faiIndex,
+                        const ProgramOptions & options)
 {
+    if (!checkRecord(record, options))
+        return false;
     unsigned idx = 0;
-    if(!getIdByName(idx, faiIndex, id))
+    contig = getContigName(record, bamFile);
+    if(!getIdByName(idx, faiIndex, contig))
     {
-        std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-        idx = 0;
-        CharString skip = id;
-        while(!atEnd(bamFile))
+        if(contig != previousContig)
         {
-            if (id == skip)
-            {
-                readRecord(record, bamFile);
-                id = getContigName(record, bamFile);
-            }
-            else if (!getIdByName(idx, faiIndex, id))
-            {
-                idx = 0;
-                std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-                skip = id;
-                readRecord(record, bamFile);
-                id = getContigName(record, bamFile);
-            }
-            else return 0;
+            std::cout << "WARNING: Cannot find contig " << contig << " in index. Skipping..." << std::endl;
+            previousContig = contig;
         }
-        std::cout << "WARNING: Cannot find ID " << id << " in index. Skipping...\n";
-        return 1;
+        return false;
     }
-    else return 0;
+    return true;
 }
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences and non-artifacts.
 //Returns the number of occurences as i1 and number of non-artifactual conversions as i2
-inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2],
+inline int getArtifactCount(unsigned (& artifactConv) [2][2],
                                                  unsigned (& normalConv) [2][2], 
                                                  BamFileIn & bamFile,
                                                  FaiIndex & faiIndex,
@@ -267,36 +232,46 @@ inline Pair<unsigned, unsigned> getArtifactCount(unsigned (& artifactConv) [2][2
     String<unsigned> nocc = "";
     reserve(occ, 5);
     Dna5String ref = "";               //Will hold triplet of reference after call of getRefAt
-    while (!atEnd(bamFile))
+    CharString previousContig = "";
+    CharString contig = "";
+    try
     {
-        clear(occ);
-        clear(nocc);
-        findNextTriplet(occ, nocc, bamFile, record, options);
-        CharString id = getContigName(record, bamFile);
-        if(skipUnkown(id, record, bamFile, faiIndex))          //Skip records with id unkown by index.
-            return Pair<unsigned, unsigned> (hits, nonHits);
-        bool isFirst = hasFlagFirst(record);
-        bool isRC = hasFlagRC(record);
-        for (unsigned i = 0; i < length(occ); ++i)
+        while (!atEnd(bamFile))
         {
-            getRefAt(ref, faiIndex,  id, occ[i]);
-            if (checkContext(ref, isFirst, isRC))
+            readRecord(record, bamFile);
+            if(!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
+                continue;
+            if(!findNextTriplet(occ, nocc, record))
+                continue;
+            CharString id = getContigName(record, bamFile);
+            bool isFirst = hasFlagFirst(record);
+            bool isRC = hasFlagRC(record);
+            for (unsigned i = 0; i < length(occ); ++i)
             {
-                ++hits;
-                ++artifactConv[isFirst][isRC];
+                getRefAt(ref, faiIndex,  id, occ[i]);
+                if (checkContext(ref, isFirst, isRC))
+                {
+                    ++hits;
+                    ++artifactConv[isFirst][isRC];
+                }
+            }
+            for (unsigned j = 0; j < length(nocc); ++j)
+            {
+                getRefAt(ref, faiIndex,  id, nocc[j]);
+                if (checkNAContext(ref, isFirst, isRC))
+                {
+                    ++nonHits;
+                    ++normalConv[isFirst][isRC];
+                }
             }
         }
-        for (unsigned j = 0; j < length(nocc); ++j)
-        {
-            getRefAt(ref, faiIndex,  id, nocc[j]);
-            if (checkNAContext(ref, isFirst, isRC))
-            {
-                ++nonHits;
-                ++normalConv[isFirst][isRC];
-            }
-        }
+        return 1;
     }
-    return Pair<unsigned, unsigned> (hits, nonHits);
+    catch (Exception const & e)
+    {
+        std::cout << "Error: "  << e.what() << std::endl;
+        return 0;
+    }
 }
 ///////////////Wrapper function for calling both checks in one run/////////////
 //Return 1 on error, 0 otherwise
@@ -308,7 +283,7 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
 {
     FaiIndex faiIndex;
     if(!loadRefIdx(faiIndex, toCString(options.refPath)))
-        return 1;
+        return 0;
     BamAlignmentRecord record;
     unsigned hits = 0;                  //counter for verified hits.
     unsigned nonHits = 0;               //counter for non artifactual conversions
@@ -317,21 +292,23 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
     String<unsigned> nocc = "";         //positions of non-artifactual triplets
     reserve(occ, 5);
     Dna5String ref = "";               //Will hold triplet of reference after call of getRefAt
+    CharString previousContig = "";
+    CharString contig = "";
     try
     {
         while (!atEnd(bamFile))
         {
-            clear(occ);
-            clear(nocc);
-            findNextTripletAndCountInsert(occ, nocc, InsertCounts,bamFile, record, options);
-            CharString id = getContigName(record, bamFile);
-            if(skipUnkown(id, record, bamFile, faiIndex))          //Skip records with id unkown by index.
-                return 1;
+            readRecord(record, bamFile);
+            if(!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
+                continue;
+            if(!findNextTripletAndCountInsert(occ, nocc, InsertCounts, record, options))
+                continue;
+            contig = getContigName(record, bamFile);
             bool isFirst = hasFlagFirst(record);
             bool isRC = hasFlagRC(record);
             for (unsigned i = 0; i < length(occ); ++i)
             {
-                getRefAt(ref, faiIndex, id, occ[i]);
+                getRefAt(ref, faiIndex, contig, occ[i]);
                 if (checkContext(ref, isFirst, isRC))
                 {
                     ++hits;
@@ -340,7 +317,7 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
             }
             for (unsigned j = 0; j < length(nocc); ++j)
             {
-                getRefAt(ref, faiIndex, id, nocc[j]);
+                getRefAt(ref, faiIndex, contig, nocc[j]);
                 if (checkNAContext(ref, isFirst, isRC))
                 {
                     ++nonHits;

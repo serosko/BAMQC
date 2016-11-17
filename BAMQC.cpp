@@ -43,7 +43,8 @@ int main(int argc, char const ** argv)
                 return 1;
             unsigned artifactConv [2][2] = {0};
             unsigned normalConv [2][2] = {0};
-            getArtifactCount(artifactConv, normalConv, bamFile, faiIndex, options);
+            if(!getArtifactCount(artifactConv, normalConv, bamFile, faiIndex, options))
+                return 1;
             wrapOutputArtifacts(artifactConv, normalConv, options);
         }
     }

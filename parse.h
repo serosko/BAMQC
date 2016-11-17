@@ -204,12 +204,12 @@ inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [
 {
     unsigned hits = artifactConv[0][0] + artifactConv[0][1] + artifactConv[1][0] + artifactConv[1][1];
     unsigned nonHits = normalConv[0][0] + normalConv[0][1] + normalConv[1][0] + normalConv[1][1];
-    out << "Artifact-like Conversions: " << hits << " total\n"
-        << "\tForward\tReverse\n"
+    out << "Artifact-like Conversions: " << hits << " total" << std::endl
+        << "\tForward\tReverse" << std::endl
         << "1st\t" << artifactConv[1][0] << "\t" << artifactConv[1][1] << std::endl
         << "2nd\t" << artifactConv[0][0] << "\t" << artifactConv[0][1] << std::endl << std::endl
-        << "Other Conversions: " << nonHits << " total\n"
-        << "\tForward\tReverse\n"
+        << "Other Conversions: " << nonHits << " total" << std::endl
+        << "\tForward\tReverse" << std::endl
         << "1st\t" << normalConv[1][0] << "\t" << normalConv[1][1] << std::endl
         << "2nd\t" << normalConv[0][0] << "\t" << normalConv[0][1] << std::endl << std::endl
         << "Fraction of artifact-like conversions: " << (double)hits / double(hits + nonHits) << std::endl;
@@ -240,14 +240,14 @@ inline void writeStats(const std::stringstream & out, const CharString & outPath
 //Wrapper for calling getFirstLast, formatStats and writeStats
 inline void wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
 {
-    std::cout << "Calculating distribution borders...";
+    std::cout << "Calculating distribution borders..."<< std::flush;
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
-    std::cout << "Done!\n";
+    std::cout << "Done!\n" << std::flush;
     std::stringstream out;
-    std::cout << "Formating distribution stats for output...";
+    std::cout << "Formating distribution stats for output..." << std::flush;
     formatStats(out, counts, firstLast);
     std::cout << "Done!\n";
-    std::cout << "Writing distribution to file...\n";
+    std::cout << "Writing distribution to file...\n" << std::flush;
     writeStats(out, options.outPathInserts);
 }
 
@@ -256,9 +256,9 @@ inline void wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
                                  const ProgramOptions & options)
 {
     std::stringstream out;
-    std::cout << "Formating conversions for output...";
+    std::cout << "Formating conversions for output..." << std::flush;
     formatArtifacts(out, artifactConv, normalConv);
-    std::cout << "Done!\n";
-    std::cout << "Writing conversions to file...\n";
+    std::cout << "Done!\n" << std::flush;
+    std::cout << "Writing conversions to file...\n" << std::flush;
     writeStats(out, options.outPathArtifacts);
 }
