@@ -10,7 +10,7 @@ using namespace seqan;
 //checks the flags and mapping quality of a record and returns false if any undesired flag is found, true otherwise.
 inline bool checkRecord (const BamAlignmentRecord & record, const ProgramOptions & options)
 {
-    if(hasFlagDuplicate(record) ||
+    if (hasFlagDuplicate(record) ||
         hasFlagQCNoPass(record) ||
         hasFlagSecondary(record)||
         hasFlagSupplementary(record) ||
@@ -205,9 +205,9 @@ inline bool checkAndSkip(CharString & contig,
         return false;
     unsigned idx = 0;
     contig = getContigName(record, bamFile);
-    if(!getIdByName(idx, faiIndex, contig))
+    if (!getIdByName(idx, faiIndex, contig))
     {
-        if(contig != previousContig)
+        if (contig != previousContig)
         {
             std::cout << "WARNING: Cannot find contig " << contig << " in index. Skipping..." << std::endl;
             previousContig = contig;
@@ -239,9 +239,9 @@ inline bool getArtifactCount(unsigned (& artifactConv) [2][2],
         while (!atEnd(bamFile))
         {
             readRecord(record, bamFile);
-            if(!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
+            if (!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
                 continue;
-            if(!findNextTriplet(occ, nocc, record))
+            if (!findNextTriplet(occ, nocc, record))
                 continue;
             CharString id = getContigName(record, bamFile);
             bool isFirst = hasFlagFirst(record);
@@ -282,7 +282,7 @@ inline bool wrapDoAll(unsigned (& artifactConv) [2][2],
                      ProgramOptions & options)
 {
     FaiIndex faiIndex;
-    if(!loadRefIdx(faiIndex, toCString(options.refPath)))
+    if (!loadRefIdx(faiIndex, toCString(options.refPath)))
         return 0;
     BamAlignmentRecord record;
     unsigned hits = 0;                  //counter for verified hits.
@@ -299,9 +299,9 @@ inline bool wrapDoAll(unsigned (& artifactConv) [2][2],
         while (!atEnd(bamFile))
         {
             readRecord(record, bamFile);
-            if(!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
+            if (!checkAndSkip(contig, previousContig, record, bamFile, faiIndex, options))
                 continue;
-            if(!findNextTripletAndCountInsert(occ, nocc, InsertCounts, record, options))
+            if (!findNextTripletAndCountInsert(occ, nocc, InsertCounts, record, options))
                 continue;
             contig = getContigName(record, bamFile);
             bool isFirst = hasFlagFirst(record);

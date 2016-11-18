@@ -21,7 +21,8 @@ struct ProgramOptions //Struct holding all program options.
     bool insDist = false;
     int maxInsert;
     unsigned minMapQ;
-    bool catg = false;
+    bool conv = false;
+    unsigned verbosity = 1;
 };
 /////////////////////Parsing functions////////////////////////
 //Parse the command line and/or display help message.
@@ -61,6 +62,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     setMinValue(parser, "min-mapq", "0");
     setMaxValue(parser, "min-mapq", "244");
 
+    addOption(parser, seqan::ArgParseOption("v0", "no-verbosity", "Disable parameter feedback."));
+
     addSection(parser, "Insert-size-distribution Options");
     addOption(parser, seqan::ArgParseOption(
               "i", "insert-size-distribution",
@@ -74,7 +77,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
 
     addSection(parser, "C>A/G>T-Artifact Options");
     addOption(parser, seqan::ArgParseOption(
-              "c", "cagt-artifact",
+              "c", "conversion-artifact",
               "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013))."
               "Requires reference genome. Output to standard output if -oc with path is not specified."));
 
@@ -105,7 +108,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     options.insDist = isSet(parser, "insert-size-distribution");
     getOptionValue(options.maxInsert, parser, "max-insert");
     getOptionValue(options.minMapQ, parser, "min-mapq");
-    options.catg = isSet(parser, "cagt-artifact");
+    options.conv = isSet(parser, "conversion-artifact");
+    options.verbosity = !isSet(parser, "no-verbosity");
     return ArgumentParser::PARSE_OK;
 }
 //Check parameters for consistency. Return 1 on inconsistencies and 0 on pass.
@@ -114,25 +118,69 @@ inline int inputCheck(ProgramOptions & options)
     if (!empty(options.outPathInserts))
         options.insDist = true;
     if (!empty(options.outPathArtifacts))
-        options.catg = true;
-    if (!(options.insDist || options.catg))
+        options.conv = true;
+    if (!(options.insDist || options.conv))
     {
         std::cerr << "Error: No checks selected. Nothing to be done. Terminating.\n";
         return 1;
     }
-    //check if both or none of catg-flags and reference genome are given.
-    if(options.catg && empty(options.refPath))
+    //check if both or none of conversion-flags and reference genome are given.
+    if (options.conv && empty(options.refPath))
     {
         std::cerr << "Error: Missing reference genome for C>A/G>T artifact-check. Terminating.\n";
         return 1;
     }
-    else if(!options.catg && !empty(options.refPath))
+    else if (!options.conv && !empty(options.refPath))
     {
         std::cerr << "Error: Reference genome given, but no required (consider setting the -i flag or giving a path "
         "for the output using -oc option). Terminating.\n";
         return 1;
     }
     return 0; //all go
+}
+//Return how the parameters are interpreted
+inline void feedBack(const ProgramOptions & options)
+{
+    if (options.verbosity == 0) return;
+    std::cout << "Parameters as interpreted:" << std::endl
+              << "BAM-File: " << options.inPath << std::endl;
+    if (!empty(options.refPath))
+        std::cout << "Reference Genome: " << options.refPath << std::endl;
+    std::cout << "Determine Insert-Size Distribution: ";
+    if (options.insDist)
+    {
+        std::cout << "Yes" << std::endl
+                  << "Output for Insert-Size Distribution: ";
+        if (empty(options.outPathInserts))
+            std::cout << "Standard Output" <<std::endl;
+        else
+            std::cout << options.outPathInserts << std::endl;
+    }
+    else
+    {
+        std::cout << "No" << std::endl;
+    }
+    std::cout << "Perform C>A/G>T-Conversion Check: ";
+    if (options.conv)
+    {
+        std::cout << "Yes" << std::endl
+                  << "Output for Conversion Check: ";
+        if (empty(options.outPathArtifacts))
+            std::cout << "Standard Output" <<std::endl;
+        else
+            std::cout << options.outPathArtifacts << std::endl;
+    }
+    else
+    {
+        std::cout << "No" << std::endl;
+    }
+    if (options.insDist)
+        std::cout << "Maximum Considered Insert-Size: " << options.maxInsert << std::endl;
+    std::cout << "Minimum Mapping-Quality: " << options.minMapQ << std::endl
+              << "Verbosity: " << options.verbosity << std::endl
+              << std::endl
+              << "Perfoming selected tasks..." << std::endl
+              << std::endl;
 }
 /////////////////////Input-file functions////////////////////////
 //Load BAM-file.
@@ -220,7 +268,7 @@ inline bool writeStats(const std::stringstream & out, const CharString & outPath
 {
     if (empty(outPath))
     {
-        std::cout << out.str();
+        std::cout << "\n" << out.str();
         return true;
     }
     else
@@ -247,7 +295,7 @@ inline bool wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
     std::stringstream out;
     formatStats(out, counts, firstLast);
-    if(!writeStats(out, options.outPathInserts))
+    if (!writeStats(out, options.outPathInserts))
         return false;
     else return true;
 }
@@ -258,7 +306,7 @@ inline bool wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
 {
     std::stringstream out;
     formatArtifacts(out, artifactConv, normalConv);
-    if(!writeStats(out, options.outPathArtifacts))
+    if (!writeStats(out, options.outPathArtifacts))
         return false;
     else return true;
 }
