@@ -117,50 +117,51 @@ inline int inputCheck(ProgramOptions & options)
         options.catg = true;
     if (!(options.insDist || options.catg))
     {
-        std::cout << "Error: No checks selected. Nothing to be done. Terminating.\n";
+        std::cerr << "Error: No checks selected. Nothing to be done. Terminating.\n";
         return 1;
     }
     //check if both or none of catg-flags and reference genome are given.
     if(options.catg && empty(options.refPath))
     {
-        std::cout << "Error: Missing reference genome for C>A/G>T artifact-check. Terminating.\n";
+        std::cerr << "Error: Missing reference genome for C>A/G>T artifact-check. Terminating.\n";
         return 1;
     }
     else if(!options.catg && !empty(options.refPath))
     {
-        std::cout << "Error: Reference genome given, but no required (consider setting the -i flag or giving a path for the output using -oc option). Terminating.\n";
+        std::cerr << "Error: Reference genome given, but no required (consider setting the -i flag or giving a path "
+        "for the output using -oc option). Terminating.\n";
         return 1;
     }
     return 0; //all go
 }
 /////////////////////Input-file functions////////////////////////
 //Load BAM-file.
-inline int loadBAM(BamFileIn & bamFile, const CharString & bamFileName)
+inline bool loadBAM(BamFileIn & bamFile, const CharString & bamFileName)
 {
     if (!open(bamFile, toCString(bamFileName)))
     {
         std::cerr << "ERROR: Could not open " << bamFileName << std::endl;
-        return 1;
+        return false;
     }
-    return 0;
+    return true;
 }
 //Load index of reference genome. If not available, build it on the fly.
-inline int loadRefIdx(FaiIndex & faiIndex, const CharString & refFileName)
+inline bool loadRefIdx(FaiIndex & faiIndex, const CharString & refFileName)
 {
     if (!open(faiIndex, toCString(refFileName)))
     {
         if (!build(faiIndex, toCString(refFileName)))
         {
             std::cerr << "ERROR: Index could not be loaded or built.\n";
-            return 0;
+            return false;
         }
         if (!save(faiIndex))
         {
             std::cerr << "ERROR: Index could not be written do disk.\n";
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 /////////////////////Output functions////////////////////////
 //Dertermine first an last non-zero insert size for cleaner output
@@ -215,11 +216,12 @@ inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [
         << "Fraction of artifact-like conversions: " << (double)hits / double(hits + nonHits) << std::endl;
 }
 //Write stats to file or std::out
-inline void writeStats(const std::stringstream & out, const CharString & outPath)
+inline bool writeStats(const std::stringstream & out, const CharString & outPath)
 {
     if (empty(outPath))
     {
         std::cout << out.str();
+        return true;
     }
     else
     {
@@ -230,35 +232,33 @@ inline void writeStats(const std::stringstream & out, const CharString & outPath
             outStream << out.str();
             outStream.close();
             std::cout << "Output written to " << outPath << std::endl;
+            return true;
         }
         else
         {
-            std::cout << "Error while writing output-file.\n";
+            std::cerr << "Error while writing output-file.\n";
         }
     }
+    return false;
 }
-//Wrapper for calling getFirstLast, formatStats and writeStats
-inline void wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
+//Wrapper for calling getFirstLast, formatStats and writeStats (=Wrtingin insert distribution to file)
+inline bool wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
 {
-    std::cout << "Calculating distribution borders..."<< std::flush;
     Pair<unsigned, unsigned> firstLast = getFirstLast(counts); //get borders of distribution for clean output
-    std::cout << "Done!\n" << std::flush;
     std::stringstream out;
-    std::cout << "Formating distribution stats for output..." << std::flush;
     formatStats(out, counts, firstLast);
-    std::cout << "Done!\n";
-    std::cout << "Writing distribution to file...\n" << std::flush;
-    writeStats(out, options.outPathInserts);
+    if(!writeStats(out, options.outPathInserts))
+        return false;
+    else return true;
 }
-
-inline void wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
+//Wrapper for writing the conversions to file
+inline bool wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
                                  unsigned (& normalConv) [2][2],
                                  const ProgramOptions & options)
 {
     std::stringstream out;
-    std::cout << "Formating conversions for output..." << std::flush;
     formatArtifacts(out, artifactConv, normalConv);
-    std::cout << "Done!\n" << std::flush;
-    std::cout << "Writing conversions to file...\n" << std::flush;
-    writeStats(out, options.outPathArtifacts);
+    if(!writeStats(out, options.outPathArtifacts))
+        return false;
+    else return true;
 }

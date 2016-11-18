@@ -33,7 +33,7 @@ inline int countInsertSize(TInsertDistr & counts, const BamAlignmentRecord & rec
     else return 1;          //return 1 if record was right mate or longer than maxInsert (not counted)
 }
 //wrapper for counting the insert sizes of the whole Bam-file
-inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
+inline bool wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, ProgramOptions & options)
 {
     resize(counts, options.maxInsert + 1, 0);
     BamAlignmentRecord record;
@@ -48,10 +48,10 @@ inline int wrapCountInsertSize(TInsertDistr & counts, BamFileIn & bamFile, Progr
     }
     catch (Exception const & e)
     {
-        std::cout << "Error: "  << e.what() << std::endl;
-        return 1;
+        std::cerr << "Error: "  << e.what() << std::endl;
+        return false;
     }
-    return 0;
+    return true;
 }
 //////////////////Artifact-check functions/////////////////////
 //scans a String for occurences of "needle" using shift-or algorithm, saves occurences in occ return true if found
@@ -218,7 +218,7 @@ inline bool checkAndSkip(CharString & contig,
 }
 //Wrapper for calling all functions necessary for finding all CCG > CAG or CGG > CTG occurences and non-artifacts.
 //Returns the number of occurences as i1 and number of non-artifactual conversions as i2
-inline int getArtifactCount(unsigned (& artifactConv) [2][2],
+inline bool getArtifactCount(unsigned (& artifactConv) [2][2],
                                                  unsigned (& normalConv) [2][2], 
                                                  BamFileIn & bamFile,
                                                  FaiIndex & faiIndex,
@@ -265,17 +265,17 @@ inline int getArtifactCount(unsigned (& artifactConv) [2][2],
                 }
             }
         }
-        return 1;
+        return true;
     }
     catch (Exception const & e)
     {
-        std::cout << "Error: "  << e.what() << std::endl;
-        return 0;
+        std::cerr << "Error: "  << e.what() << std::endl;
+        return false;
     }
 }
 ///////////////Wrapper function for calling both checks in one run/////////////
 //Return 1 on error, 0 otherwise
-inline int wrapDoAll(unsigned (& artifactConv) [2][2],
+inline bool wrapDoAll(unsigned (& artifactConv) [2][2],
                      unsigned (& normalConv) [2][2],
                      TInsertDistr & InsertCounts, 
                      BamFileIn & bamFile,
@@ -325,11 +325,11 @@ inline int wrapDoAll(unsigned (& artifactConv) [2][2],
                 }
             }
         }
-        return 1;
+        return true;
     }
     catch (Exception const & e)
     {
-        std::cout << "Error: "  << e.what() << std::endl;
-        return 0;
+        std::cerr << "Error: "  << e.what() << std::endl;
+        return false;
     }
 }
