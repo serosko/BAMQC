@@ -29,6 +29,9 @@ DESCRIPTION
     -mmq, --min-mapq INT  
           Minimum mapping quality. In range [0..244]. Default: 25.
 
+    -v0, --no-verbosity  
+          Disable parameter feedback.
+
   Insert-size-distribution Options:  
 
     -i, --insert-size-distribution  
