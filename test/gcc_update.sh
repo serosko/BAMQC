@@ -1,4 +1,5 @@
 #!/bin/bash
+#Source:https://github.com/biicode/misc
 while [[ $# > 1 ]]
 do
 key="$1"
