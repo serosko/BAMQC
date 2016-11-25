@@ -1,3 +1,5 @@
+Travis CI Status: [![Build Status](https://travis-ci.org/serosko/BAMQC.svg?branch=master)](https://travis-ci.org/serosko/BAMQC)
+
 BAMQC - Simple quality-control for (single-sample) BAM-files.
 =============================================================
 
