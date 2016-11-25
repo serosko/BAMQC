@@ -1,4 +1,7 @@
 //Author: Sebastian Roskosch <Sebastian.Roskosch[at]bihealth.de>
+#ifndef PARSE_H_
+#define PARSE_H_
+
 #include <seqan/arg_parse.h>
 #include <seqan/bam_io.h>
 #include <seqan/seq_io.h>
@@ -351,3 +354,4 @@ inline bool wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
         return false;
     else return true;
 }
+#endif /* PARSE_H_ */

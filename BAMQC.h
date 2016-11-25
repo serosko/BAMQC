@@ -1,8 +1,11 @@
 //Author: Sebastian Roskosch <Sebastian.Roskosch[at]bihealth.de>
+#ifndef BAMQC_H_
+#define BAMQC_H_
+
 #include <iostream>
 #include <seqan/bam_io.h>
-#include <parse.h>
 #include <seqan/find.h>
+#include "parse.h"
 
 using namespace seqan;
 
@@ -374,3 +377,4 @@ inline bool wrapDoAll(unsigned (& artifactConv) [2][2],
         return false;
     }
 }
+#endif /* BAMQC_H_ */
