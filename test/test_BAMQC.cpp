@@ -48,7 +48,7 @@ SEQAN_DEFINE_TEST(test_countInsertSize)
             SEQAN_ASSERT_EQ(counts[i], 1u);
     }
 }
-SEQAN_DEFINE_TEST(findTriplet)
+SEQAN_DEFINE_TEST(test_findTriplet)
 {
     Dna5String haystack = "CNNNNCTCGTAAACTGAAAATCGTCGAAAACT"; //AAAA at 16 and 26
     Dna5String needle1 = "CCCC";            //No hits
@@ -61,7 +61,7 @@ SEQAN_DEFINE_TEST(findTriplet)
     SEQAN_ASSERT_EQ(occ[0], 16u);
     SEQAN_ASSERT_EQ(occ[1], 26u);
 }
-SEQAN_DEFINE_TEST(getNeedles)
+SEQAN_DEFINE_TEST(test_getNeedles)
 {
     Dna5String dummy1 = "";
     Dna5String dummy2 = "";
@@ -97,12 +97,31 @@ SEQAN_DEFINE_TEST(getNeedles)
     SEQAN_ASSERT_EQ(needleSecondRC[1], (Dna5)'T');
     SEQAN_ASSERT_EQ(revNeedleSecondRC[1], (Dna5)'A');
 }
+SEQAN_DEFINE_TEST(test_checkContext)
+{
+    Dna5String cgg = "CGG";
+    Dna5String ccg = "CCG";
+    Dna5String nnn = "NNN";
+    SEQAN_ASSERT_EQ(checkContext(cgg, true, false), true);
+    SEQAN_ASSERT_EQ(checkContext(cgg, false, false), false);
+    SEQAN_ASSERT_EQ(checkContext(cgg, true, true), false);
+    SEQAN_ASSERT_EQ(checkContext(cgg, false, true), true);
+    SEQAN_ASSERT_EQ(checkContext(ccg, true, false), false);
+    SEQAN_ASSERT_EQ(checkContext(ccg, false, false), true);
+    SEQAN_ASSERT_EQ(checkContext(ccg, true, true), true);
+    SEQAN_ASSERT_EQ(checkContext(ccg, false, true), false);
+    SEQAN_ASSERT_EQ(checkContext(nnn, true, false), false);
+    SEQAN_ASSERT_EQ(checkContext(nnn, false, false), false);
+    SEQAN_ASSERT_EQ(checkContext(nnn, true, true), false);
+    SEQAN_ASSERT_EQ(checkContext(nnn, false, true), false);
+}
 
-SEQAN_BEGIN_TESTSUITE(test_my_app_funcs)
+SEQAN_BEGIN_TESTSUITE(test_BAMQC)
 {
     SEQAN_CALL_TEST(test_checkRecord);
     SEQAN_CALL_TEST(test_countInsertSize);
-    SEQAN_CALL_TEST(findTriplet);
-    SEQAN_CALL_TEST(getNeedles);
+    SEQAN_CALL_TEST(test_findTriplet);
+    SEQAN_CALL_TEST(test_getNeedles);
+    SEQAN_CALL_TEST(test_checkContext);
 }
 SEQAN_END_TESTSUITE
