@@ -24,7 +24,9 @@ struct ProgramOptions //Struct holding all program options.
     bool conv = false;
     unsigned verbosity = 1;
 };
-/////////////////////Parsing functions////////////////////////
+// ---------------------------------------------------------------------------------------
+// Parsing Functions
+// ---------------------------------------------------------------------------------------
 //Parse the command line and/or display help message.
 ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
                                                     int argc,
@@ -35,7 +37,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addUsageLine(parser, "BAM_FILE [OPTIONS]");
     setDate(parser, __DATE__);
     setVersion(parser, "1.0.0");
-    
+
     addSection(parser, "I/O Options");
     ArgParseArgument fileArg(ArgParseArgument::INPUT_FILE, "FILE", false);
     setValidValues(fileArg, "bam sam");
@@ -44,7 +46,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addOption(parser, seqan::ArgParseOption(
     "r", "reference", "Path to reference genome. Required for C>A/G>T-Artifact-check.",
     seqan::ArgParseArgument::INPUT_FILE, "IN"));
-    setValidValues(parser, "reference", "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
+    setValidValues(parser, "reference",
+                   "fasta fa fastq fq fasta.gz fa.gz fastq.gz fq.gz fasta.bz2 fa.bz2 fastq.bz2 fq.bz2");
 
     addOption(parser, seqan::ArgParseOption(
     "oi", "output-file-inserts", "Path to output file for the insert-size distribution.",
@@ -67,7 +70,8 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addSection(parser, "Insert-size-distribution Options");
     addOption(parser, seqan::ArgParseOption(
               "i", "insert-size-distribution",
-              "Counts the insert size of each valid read-pair. Output to standard output if -oi with path is not specified."));
+              "Counts the insert size of each valid read-pair. Output to standard output if -oi with path is not "
+              "specified."));
 
     addOption(parser, seqan::ArgParseOption(
     "m", "max-insert", "Maximum insert size. Sizes above will be ignored.",
@@ -78,7 +82,7 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     addSection(parser, "C>A/G>T-Artifact Options");
     addOption(parser, seqan::ArgParseOption(
               "c", "conversion-artifact",
-              "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013))."
+              "Perform check for C>A/G>T artifacts induced during sample preparation (Costello et al. (2013)). "
               "Requires reference genome. Output to standard output if -oc with path is not specified."));
 
     addTextSection(parser, "Examples");
@@ -92,8 +96,10 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
      addListItem(parser,
         "\\fBBAMQC\\fP \\fBfile.bam\\fP \\fB-r reference.fa\\fP \\fB-oi inserts.txt\\fP \\fB-oc conversions.txt\\fP "
         "\\fB-mmq 30\\fP \\fB-m 500\\fP",
-        "Perform both of the above checks in one run, but only consider alignments with mapping-quality of at least phred 30 (both checks) "
-        "and a maximum considered insert-size of 500 (insert-size calculation). Output is saved in \"inserts.txt\" and \"conversions.txt.\"");
+        "Perform both of the above checks in one run, but only consider alignments with mapping-quality of at least "
+        "phred 30 (both checks) "
+        "and a maximum considered insert-size of 500 (insert-size calculation). Output is saved in \"inserts.txt\" and "
+        "\"conversions.txt.\"");
 
     //Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
@@ -112,6 +118,9 @@ ArgumentParser::ParseResult parseCommandLine(ProgramOptions & options,
     options.verbosity = !isSet(parser, "no-verbosity");
     return ArgumentParser::PARSE_OK;
 }
+// ---------------------------------------------------------------------------------------
+// Function inputCheck()
+// ---------------------------------------------------------------------------------------
 //Check parameters for consistency. Return 1 on inconsistencies and 0 on pass.
 inline int inputCheck(ProgramOptions & options)
 {
@@ -138,6 +147,9 @@ inline int inputCheck(ProgramOptions & options)
     }
     return 0; //all go
 }
+// ---------------------------------------------------------------------------------------
+// Function feedBack()
+// ---------------------------------------------------------------------------------------
 //Return how the parameters are interpreted
 inline void feedBack(const ProgramOptions & options)
 {
@@ -182,8 +194,13 @@ inline void feedBack(const ProgramOptions & options)
               << "Perfoming selected tasks..." << std::endl
               << std::endl;
 }
-/////////////////////Input-file functions////////////////////////
-//Load BAM-file.
+// ---------------------------------------------------------------------------------------
+// Input-File functions
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// Function loadBAM()
+// ---------------------------------------------------------------------------------------
+//Load BAM-file. Return false on errors, true otherwise.
 inline bool loadBAM(BamFileIn & bamFile, const CharString & bamFileName)
 {
     if (!open(bamFile, toCString(bamFileName)))
@@ -211,7 +228,12 @@ inline bool loadRefIdx(FaiIndex & faiIndex, const CharString & refFileName)
     }
     return true;
 }
-/////////////////////Output functions////////////////////////
+// ---------------------------------------------------------------------------------------
+// Output-Functions
+// ---------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------
+// Function getFirstLast()
+// ---------------------------------------------------------------------------------------
 //Dertermine first an last non-zero insert size for cleaner output
 Pair<unsigned, unsigned> getFirstLast (const TInsertDistr & counts)
 {
@@ -234,8 +256,14 @@ Pair<unsigned, unsigned> getFirstLast (const TInsertDistr & counts)
     }
     return firstLast;
 }
-//Format output stats
-inline void formatStats(std::stringstream & out, const TInsertDistr & counts, const Pair<unsigned, unsigned> & firstLast)
+// ---------------------------------------------------------------------------------------
+// Function formatStats()
+// ---------------------------------------------------------------------------------------
+//Format the insertSize output.
+inline void formatStats(std::stringstream & out,
+                        const TInsertDistr & counts,
+                        const Pair<unsigned,
+                        unsigned> & firstLast)
 {
     if (firstLast.i1 == 0 && firstLast.i2 == 0)
     {
@@ -249,6 +277,10 @@ inline void formatStats(std::stringstream & out, const TInsertDistr & counts, co
         out << i << '\t' << counts[i] << '\n';
     }
 }
+// ---------------------------------------------------------------------------------------
+// Function formatArtifacts()
+// ---------------------------------------------------------------------------------------
+//Format the conversion artifact output.
 inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [2][2], unsigned (& normalConv) [2][2])
 {
     unsigned hits = artifactConv[0][0] + artifactConv[0][1] + artifactConv[1][0] + artifactConv[1][1];
@@ -263,7 +295,10 @@ inline void formatArtifacts(std::stringstream & out, unsigned (& artifactConv) [
         << "2nd\t" << normalConv[0][0] << "\t" << normalConv[0][1] << std::endl << std::endl
         << "Fraction of artifact-like conversions: " << (double)hits / double(hits + nonHits) << std::endl;
 }
-//Write stats to file or std::out
+// ---------------------------------------------------------------------------------------
+// Function writeStats()
+// ---------------------------------------------------------------------------------------
+//Write output to file or standard output.
 inline bool writeStats(const std::stringstream & out, const CharString & outPath)
 {
     if (empty(outPath))
@@ -289,6 +324,9 @@ inline bool writeStats(const std::stringstream & out, const CharString & outPath
     }
     return false;
 }
+// ---------------------------------------------------------------------------------------
+// Function wrapOutputInserts()
+// ---------------------------------------------------------------------------------------
 //Wrapper for calling getFirstLast, formatStats and writeStats (=Wrtingin insert distribution to file)
 inline bool wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions & options)
 {
@@ -299,6 +337,9 @@ inline bool wrapOutputInserts (const TInsertDistr & counts, const ProgramOptions
         return false;
     else return true;
 }
+// ---------------------------------------------------------------------------------------
+// Function wrapOutputArtifacts()
+// ---------------------------------------------------------------------------------------
 //Wrapper for writing the conversions to file
 inline bool wrapOutputArtifacts (unsigned (& artifactConv) [2][2],
                                  unsigned (& normalConv) [2][2],

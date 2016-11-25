@@ -10,7 +10,7 @@ int main(int argc, char const ** argv)
                                                               argv);
     if (res != seqan::ArgumentParser::PARSE_OK) 
         return res == seqan::ArgumentParser::PARSE_ERROR;               //Terminate on parsing errors
-    if (inputCheck(options))                                             //Terminate if check of parameters fails.
+    if (inputCheck(options))                                            //Terminate if check of parameters fails.
         return 1;
     feedBack(options);
     BamFileIn bamFile;                                                  //Prepare and load BAM-file
@@ -33,7 +33,7 @@ int main(int argc, char const ** argv)
     }
     else
     {
-        if (options.insDist)                                                //Only InsertSize Distribution
+        if (options.insDist)                                            //Only InsertSize Distribution
         {
         TInsertDistr InsertCounts = "";
         if (!wrapCountInsertSize(InsertCounts, bamFile, options))
@@ -41,7 +41,7 @@ int main(int argc, char const ** argv)
         if (!wrapOutputInserts(InsertCounts, options))
             return 1;
         }
-        else if (options.conv)                                             //Only CCG > CAG or CGG > CTG Artifact check
+        else if (options.conv)                                          //Only CCG > CAG or CGG > CTG Artifact check
         {
             FaiIndex faiIndex;
             if (!loadRefIdx(faiIndex, toCString(options.refPath)))
