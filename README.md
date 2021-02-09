@@ -66,4 +66,4 @@ VERSION
     Last update: Nov 15 2016  
     BAMQC version: 1.0.0  
     SeqAn version: 2.2.0  
-    Author: Sebastian Roskosch <Sebastian.Roskosch[at]bihealth.de>
+    Author: Sebastian Niehus <Sebastian.Niehus[at]ukr.de>
